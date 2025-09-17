@@ -1,7 +1,16 @@
 #include "hotspotchat.h"
-#include "hotspot.capnp.h"
+
 #include <capnp/message.h>
 #include <capnp/serialize-packed.h>
+#include "hotspot.capnp.h"
+
+#include <hproto.h>
+
+struct Emoji {
+    static constexpr uint32_t hproto_id = 0x1001;
+
+    char32_t emoji;
+};
 
 static const QByteArray c_bannerGreet = QByteArrayLiteral("👋");
 static const QByteArray c_bannerRedirect = QByteArrayLiteral("↩");
@@ -49,10 +58,29 @@ void HotspotChat::setUrl(const QUrl &newUrl) {
     //     return;
 
     // connectToHost(m_url.host(), m_url.port());
+
+    Emoji emoji{(char32_t)WAVE};
+    HVariant variant;
+    variant = emoji;
+    qWarning() << QString::fromUcs4(&variant.value<Emoji>()->emoji, 1);
+    emoji.emoji = HOTSPOT;
+    qWarning() << QString::fromUcs4(&variant.value<Emoji>()->emoji, 1);
+    variant = emoji;
+    qWarning() << QString::fromUcs4(&variant.value<Emoji>()->emoji, 1);
+
+
+    capnp::MallocMessageBuilder message;
+    RouterCreateWaitroomRequest::Builder request = message.initRoot<RouterCreateWaitroomRequest>();
+
+    kj::VectorOutputStream kjBuffer;
+    capnp::writeMessage(kjBuffer, message);
+    kj::ArrayPtr<unsigned char> arr = kjBuffer.getArray();
+
+    writeDatagram(reinterpret_cast<const char*>(arr.begin()), arr.size(), QHostAddress(m_url.host()), m_url.port());
 }
 
 bool HotspotChat::connected() {
-    return state() == QAbstractSocket::ConnectedState;
+    return m_connectionState == ConnectedToPeer;
 }
 
 QVariantList HotspotChat::messages() const {
@@ -60,7 +88,7 @@ QVariantList HotspotChat::messages() const {
 }
 
 void HotspotChat::send(QString text) {
-    ::capnp::MallocMessageBuilder message;
+    capnp::MallocMessageBuilder message;
     Header::Builder header = message.initRoot<Header>();
 
     qWarning() << QString::fromUcs4(&HOTSPOT, 1);
@@ -94,16 +122,18 @@ void HotspotChat::readyRead() {
         kj::ArrayPtr arr(reinterpret_cast<const unsigned char*>(data.data()), data.size());
         kj::ArrayInputStream stream(arr);
 
-        ::capnp::InputStreamMessageReader message(stream);
+        capnp::_::WireValue<uint32_t> firstWord[2];
+
+        stream.read(&firstWord, 2-1);
+
+        capnp::InputStreamMessageReader message(stream);
 
         Header::Reader header = message.getRoot<Header>();
 
         char32_t emoji = header.getEmoji();
-        QChar emojiChar(emoji);
-        qWarning() << emojiChar;
+        QString text = QStringView(QChar::fromUcs4(emoji)).toString();
+        qWarning() << text;
 
-        // QString text(data);
-        QString text = emojiChar;
         m_messages.append(QVariantMap({{"from", "remote"}, {"text", text}}));
         // qDebug() << data;
         emit messagesChanged();

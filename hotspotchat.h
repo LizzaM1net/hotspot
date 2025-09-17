@@ -15,6 +15,13 @@ class HotspotChat : public QUdpSocket
     Q_PROPERTY(QVariantList messages READ messages NOTIFY messagesChanged FINAL)
 
 public:
+    enum ConnectionState {
+        Disconnected,
+        ConnectedToRouter,
+        ConnectedToPeer
+    }; Q_ENUM(ConnectionState)
+
+public:
     explicit HotspotChat(QObject *parent = nullptr);
     ~HotspotChat();
 
@@ -35,6 +42,8 @@ private:
     quint16 m_port = 0;
     QUrl m_url;
     QVariantList m_messages;
+
+    ConnectionState m_connectionState = Disconnected;
 
 signals:
     void portChanged();

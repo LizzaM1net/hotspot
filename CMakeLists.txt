@@ -5,7 +5,7 @@ project(hClient VERSION 0.1 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Quick)
-find_package(CapnProto REQUIRED)
+find_package(CapnProto REQUIRED CONFIG)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 add_definitions(${CAPNP_DEFINITIONS})
@@ -25,6 +25,7 @@ qt_add_qml_module(apphClient
         SOURCES hotspotchat.h hotspotchat.cpp
         SOURCES ${CAPNP_SRCS} ${CAPNP_HDRS}
         RESOURCES hotspot.capnp
+        SOURCES hproto.h
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
