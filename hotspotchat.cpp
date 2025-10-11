@@ -6,24 +6,21 @@ static constexpr uint32_t HOTSPOT = 128732u;
 static constexpr uint32_t WAVE = 128075u;
 
 struct Emoji {
-    H_SIZED_OBJECT(0x1001)
     char32_t emoji;
 };
-HOTSPOT_GUARD_SIZE(Emoji, 4)
+HOTSPOT_SIZED_OBJECT(Emoji, 0x1001, 4)
 
 struct RouterCreateWaitroomRequest {
-    H_SIZED_OBJECT(0x1002)
     uint32_t local_ip;
     uint16_t local_port;
 };
-HOTSPOT_GUARD_SIZE(RouterCreateWaitroomRequest, 8)
+HOTSPOT_SIZED_OBJECT(RouterCreateWaitroomRequest, 0x1002, 8)
 
 struct RouterRedirectAnswer {
-    H_SIZED_OBJECT(0x1003)
     uint32_t ip;
     uint16_t port;
 };
-HOTSPOT_GUARD_SIZE(RouterRedirectAnswer, 8)
+HOTSPOT_SIZED_OBJECT(RouterRedirectAnswer, 0x1003, 8)
 
 static const QByteArray c_bannerGreet = QByteArrayLiteral("👋");
 static const QByteArray c_bannerRedirect = QByteArrayLiteral("↩");
@@ -62,32 +59,11 @@ void HotspotChat::setUrl(const QUrl &newUrl) {
     m_url = newUrl;
     emit urlChanged();
 
-    // if (state() == QAbstractSocket::ConnectedState
-    //     || state() == QAbstractSocket::ConnectingState
-    //     || state() == QAbstractSocket::HostLookupState)
-    //     disconnectFromHost();
-
-    // if (!m_url.isValid() || m_url.port() == -1)
-    //     return;
-
-    // connectToHost(m_url.host(), m_url.port());
-
-    // Emoji emoji{(char32_t)WAVE};
-    // HVariant variant;
-    // variant = emoji;
-    // qWarning() << QString::fromUcs4(&variant.value<Emoji>()->emoji, 1);
-    // emoji.emoji = HOTSPOT;
-    // qWarning() << QString::fromUcs4(&variant.value<Emoji>()->emoji, 1);
-    // variant = emoji;
-    // qWarning() << QString::fromUcs4(&variant.value<Emoji>()->emoji, 1);
-
     quint32 addr = localAddress().toIPv4Address();
-    RouterCreateWaitroomRequest request{addr, localPort()};
-    HVariant variant;
-    variant = request;
 
-    QByteArray arr(variant.serializedSize<RouterCreateWaitroomRequest>(), Qt::Uninitialized);
-    variant.serializeToArray<RouterCreateWaitroomRequest>(arr.data());
+    std::variant<RouterCreateWaitroomRequest> var = RouterCreateWaitroomRequest{addr, localPort()};
+    QByteArray arr(hproto_size(var), Qt::Uninitialized);
+    hproto_write(var, arr.data());
 
     writeDatagram(arr.data(), arr.size(), QHostAddress(m_url.host()), m_url.port());
 }
@@ -101,21 +77,32 @@ QVariantList HotspotChat::messages() const {
 }
 
 void HotspotChat::send(QString text) {
-    Emoji emoji{(char32_t)WAVE};
-    HVariant variant;
-    variant = emoji;
-
-    QByteArray arr(variant.serializedSize<RouterCreateWaitroomRequest>(), Qt::Uninitialized);
-    variant.serializeToArray<RouterCreateWaitroomRequest>(arr.data());
+    std::variant<Emoji> var = Emoji{(char32_t)HOTSPOT};
+    QByteArray arr(hproto_size(var), Qt::Uninitialized);
+    hproto_write(var, arr.data());
 
     writeDatagram(arr, QHostAddress(m_url.host()), m_url.port());
 
-    m_messages.append(QVariantMap({{"from", "local"}, {"text", QString::fromUcs4(&HOTSPOT, 1)}}));
+    m_messages.append(QVariantMap({{"from", "local"}, {"text", QStringView(QChar::fromUcs4(std::get<Emoji>(var).emoji)).toString()}}));
     emit messagesChanged();
 }
 
 void HotspotChat::greetAddress(QUrl url) {
     writeDatagram(c_bannerGreet, QHostAddress(url.host()), url.port());
+    writeDatagram(c_bannerRedirect, QHostAddress(url.host()), url.port());
+}
+
+HotspotChat::ConnectionState HotspotChat::connectionState() const
+{
+    return m_connectionState;
+}
+
+void HotspotChat::setConnectionState(ConnectionState newConnectionState)
+{
+    if (m_connectionState == newConnectionState)
+        return;
+    m_connectionState = newConnectionState;
+    emit connectionStateChanged();
 }
 
 void HotspotChat::readyRead() {
@@ -125,13 +112,15 @@ void HotspotChat::readyRead() {
         quint16 port;
         readDatagram(data.data(), data.size(), &host, &port);
 
-        HVariant var = HVariant::deserializeFromArray<Emoji, RouterRedirectAnswer>(data.data(), data.size());
-        if (Emoji *emoji = var.cast<Emoji*>()) {
+        qWarning() << "got size" << data.size();
+
+        std::variant var = hproto_read<Emoji, RouterRedirectAnswer, RouterCreateWaitroomRequest>(data.data(), data.size());
+        if (Emoji *emoji = std::get_if<Emoji>(&var)) {
             QString text = QStringView(QChar::fromUcs4(emoji->emoji)).toString();
 
             m_messages.append(QVariantMap({{"from", "remote"}, {"text", text}}));
             emit messagesChanged();
-        } else if (RouterRedirectAnswer *answer = var.cast<RouterRedirectAnswer*>()) {
+        } else if (RouterRedirectAnswer *answer = std::get_if<RouterRedirectAnswer>(&var)) {
             QHostAddress addr(answer->ip);
             QUrl url;
             url.setScheme("h");
@@ -141,8 +130,11 @@ void HotspotChat::readyRead() {
             if (url.isValid()) {
                 emit redirected(url);
             }
+        // } else if (RouterCreateWaitroomRequest *request = std::get_if<RouterCreateWaitroomRequest>(&var)) {
+        //     m_messages.append(QVariantMap({{"from", "remote"}, {"text", "redirect"}}));
+        //     emit messagesChanged();
         } else {
-            qWarning() << "got  trash";
+            qWarning() << "got trash";
         }
     }
 }

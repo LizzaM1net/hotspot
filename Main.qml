@@ -18,6 +18,7 @@ Window {
             addressField.text = url
             // hotspot.send("hei?")
             greetAddress(url)
+            addressField.focus = false
         }
 
         Component.onCompleted: greetAddress("h://94.159.103.63:17172")
@@ -36,8 +37,8 @@ Window {
                 id: addressField
                 Layout.fillWidth: true
 
-                // text: "h://127.0.0.1:17171"
-                text: "h://94.159.103.63:17171"
+                text: "h://127.0.0.1:17171"
+                // text: "h://94.159.103.63:17171"
             }
 
             Rectangle {

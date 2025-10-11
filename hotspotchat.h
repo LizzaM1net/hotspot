@@ -13,6 +13,7 @@ class HotspotChat : public QUdpSocket
     Q_PROPERTY(QUrl url READ url WRITE setUrl NOTIFY urlChanged FINAL)
     Q_PROPERTY(bool connected READ connected NOTIFY connectedChanged FINAL)
     Q_PROPERTY(QVariantList messages READ messages NOTIFY messagesChanged FINAL)
+    Q_PROPERTY(ConnectionState connectionState READ connectionState NOTIFY connectionStateChanged FINAL)
 
 public:
     enum ConnectionState {
@@ -38,6 +39,11 @@ public:
 
     Q_INVOKABLE void greetAddress(QUrl url);
 
+    ConnectionState connectionState() const;
+
+private:
+    void setConnectionState(ConnectionState newConnectionState);
+
 private:
     quint16 m_port = 0;
     QUrl m_url;
@@ -52,6 +58,8 @@ signals:
     void messagesChanged();
 
     void redirected(QUrl url);
+
+    void connectionStateChanged();
 
 private slots:
     void readyRead();

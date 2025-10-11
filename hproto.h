@@ -9,79 +9,54 @@
 #error "Big-endian not supported"
 #endif
 
-#define H_SIZED_OBJECT(id) static constexpr uint32_t hproto_id = id;\
-static size_t hproto_size;
+typedef uint32_t hproto_id_t;
 
-#define HOTSPOT_GUARD_SIZE(name, size) static_assert(sizeof(name) == size, "Bad hotspot type size: "#name);\
-size_t name::hproto_size = size;
-
-struct HVariant {
-    uint64_t id = 0;
-    void *data = nullptr;
-
-    template<typename T>
-    void operator=(T& t) {
-        data = malloc(sizeof(T));
-        memcpy(data, &t, sizeof(T));
-        id = T::hproto_id;
-    }
-
-    template<typename T>
-    T* value() {
-        if (id != T::hproto_id)
-            return nullptr;
-
-        return (T*)data;
-    }
-
-    template<typename T>
-    bool holds_alternative() {
-        return T::hproto_id == id;
-    }
-
-    template<typename T>
-    size_t serializedSize() {
-        return sizeof(uint64_t)+sizeof(T);
-    }
-
-    template<typename T>
-    void serializeToArray(void* array) {
-        if (array == nullptr || data == nullptr)
-            return;
-
-        memcpy(array, &id, sizeof(uint64_t));
-        memcpy((char*)array+sizeof(uint64_t), data, sizeof(T));
-    }
-
-    template<typename T>
-    static bool try_cast(HVariant &variant, void* array, size_t size) {
-        if (size < sizeof(uint32_t) + sizeof(T) || array == nullptr)
-            return false;
-
-        memcpy(&variant.id, array, sizeof(uint64_t));
-
-        if (T::hproto_id != variant.id)
-            return false;
-
-        variant.data = malloc(sizeof(T));
-        memcpy(variant.data, (char*)array+sizeof(uint64_t), sizeof(T));
-        return true;
-    }
-
-    template<typename... Ts>
-    static HVariant deserializeFromArray(void* array, size_t size) {
-        HVariant variant;
-        (try_cast<Ts>(variant, array, size) || ...);
-        return variant;
-    }
-
-    template<typename T>
-    T cast() {
-        if (std::remove_pointer_t<T>::hproto_id != id)
-            return nullptr;
-
-        return static_cast<T>(data);
-    }
+template <typename T>
+struct HProtoData {
+    static constexpr const hproto_id_t id = 0;
+    static constexpr size_t hproto_size = 0;
 };
+
+#define HOTSPOT_SIZED_OBJECT(name, id, size) static_assert(sizeof(name) == size, "Bad hotspot type size: "#name);\
+template<>\
+struct HProtoData<name> {\
+    static constexpr const hproto_id_t hproto_id = id;\
+    static constexpr const size_t hproto_size = size;\
+};
+
+template <typename Ts>
+size_t hproto_size(std::variant<Ts> variant) {
+    return sizeof(hproto_id_t)+std::visit([](const auto& value) { return sizeof(value); }, variant);
+}
+
+template <typename Ts>
+void hproto_write(std::variant<Ts> variant, void *data) {
+    std::visit([data](const auto& value) {
+        hproto_id_t id = HProtoData<std::remove_cvref_t<decltype(value)>>::hproto_id;
+        memcpy(data, &id, sizeof(hproto_id_t));
+        memcpy((char*)data+sizeof(hproto_id_t), &value, sizeof(value));
+    }, variant);
+}
+
+template <typename T, typename... Ts>
+bool hproto_try_variant_type(void *data, size_t size, hproto_id_t id, std::variant<Ts...> &var) {
+    if (id != HProtoData<T>::hproto_id || size != HProtoData<T>::hproto_size)
+        return false;
+
+    var.template emplace<T>(*reinterpret_cast<T *>(data));
+
+    return true;
+}
+
+template <typename... Ts>
+std::variant<std::monostate, Ts...> hproto_read(void *data, size_t size) {
+    hproto_id_t id;
+    memcpy(&id, data, sizeof(hproto_id_t));
+    std::variant<std::monostate, Ts...> var;
+
+    (hproto_try_variant_type<Ts, std::monostate, Ts...>((char*)data+sizeof(hproto_id_t), size-sizeof(hproto_id_t), id, var) || ...);
+
+    return var;
+}
 
 #endif // HPROTO_H
