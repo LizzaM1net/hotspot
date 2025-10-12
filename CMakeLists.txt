@@ -6,11 +6,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 20)
 
 find_package(Qt6 REQUIRED COMPONENTS Quick)
-find_package(CapnProto REQUIRED CONFIG)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
-add_definitions(${CAPNP_DEFINITIONS})
-capnp_generate_cpp(CAPNP_SRCS CAPNP_HDRS hotspot.capnp)
 
 qt_standard_project_setup(REQUIRES 6.8)
 
@@ -24,8 +21,6 @@ qt_add_qml_module(apphClient
     QML_FILES
         Main.qml
         SOURCES hotspotchat.h hotspotchat.cpp
-        SOURCES ${CAPNP_SRCS} ${CAPNP_HDRS}
-        RESOURCES hotspot.capnp
         SOURCES hproto.h
 )
 
@@ -41,7 +36,7 @@ set_target_properties(apphClient PROPERTIES
 )
 
 target_link_libraries(apphClient
-    PRIVATE Qt6::Quick CapnProto::capnp
+    PRIVATE Qt6::Quick
 )
 
 include(GNUInstallDirs)
