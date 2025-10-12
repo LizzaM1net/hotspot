@@ -2,14 +2,6 @@
 
 #include <hproto.h>
 
-static constexpr uint32_t HOTSPOT = 128732u;
-static constexpr uint32_t WAVE = 128075u;
-
-struct Emoji {
-    char32_t emoji;
-};
-HOTSPOT_SIZED_OBJECT(Emoji, 0x1001, 4)
-
 struct RouterCreateWaitroomRequest {
     uint32_t local_ip;
     uint16_t local_port;
@@ -77,13 +69,13 @@ QVariantList HotspotChat::messages() const {
 }
 
 void HotspotChat::send(QString text) {
-    std::variant<Emoji> var = Emoji{(char32_t)HOTSPOT};
+    std::variant<std::string> var = text.toStdString();
     QByteArray arr(hproto_size(var), Qt::Uninitialized);
     hproto_write(var, arr.data());
 
     writeDatagram(arr, QHostAddress(m_url.host()), m_url.port());
 
-    m_messages.append(QVariantMap({{"from", "local"}, {"text", QStringView(QChar::fromUcs4(std::get<Emoji>(var).emoji)).toString()}}));
+    m_messages.append(QVariantMap({{"from", "local"}, {"text", text}}));
     emit messagesChanged();
 }
 
@@ -112,12 +104,9 @@ void HotspotChat::readyRead() {
         quint16 port;
         readDatagram(data.data(), data.size(), &host, &port);
 
-        qWarning() << "got size" << data.size();
-
-        std::variant var = hproto_read<Emoji, RouterRedirectAnswer, RouterCreateWaitroomRequest>(data.data(), data.size());
-        if (Emoji *emoji = std::get_if<Emoji>(&var)) {
-            QString text = QStringView(QChar::fromUcs4(emoji->emoji)).toString();
-
+        std::variant var = hproto_read<std::string, RouterRedirectAnswer>(data.data(), data.size());
+        if (std::string *string = std::get_if<std::string>(&var)) {
+            QString text = QString::fromStdString(*string);
             m_messages.append(QVariantMap({{"from", "remote"}, {"text", text}}));
             emit messagesChanged();
         } else if (RouterRedirectAnswer *answer = std::get_if<RouterRedirectAnswer>(&var)) {
@@ -130,9 +119,6 @@ void HotspotChat::readyRead() {
             if (url.isValid()) {
                 emit redirected(url);
             }
-        // } else if (RouterCreateWaitroomRequest *request = std::get_if<RouterCreateWaitroomRequest>(&var)) {
-        //     m_messages.append(QVariantMap({{"from", "remote"}, {"text", "redirect"}}));
-        //     emit messagesChanged();
         } else {
             qWarning() << "got trash";
         }
