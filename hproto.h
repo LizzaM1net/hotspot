@@ -34,11 +34,12 @@ struct HProtoData<std::string> {
     static std::string hproto_read(const void* data) {
         string_len_t size;
         memcpy(&size, data, sizeof(string_len_t));
-        return std::string((char*)data+sizeof(string_len_t), size);;
+        return std::string((char*)data+sizeof(string_len_t), size);
     }
 };
 
-#define HOTSPOT_SIZED_OBJECT(name, id, size) static_assert(sizeof(name) == size, "Bad hotspot type size: "#name);\
+#define HOTSPOT_SIZED_OBJECT(name, id, size)\
+static_assert(sizeof(name) == size, "Bad hotspot type size: "#name);\
 template<>\
 struct HProtoData<name> {\
     static constexpr const hproto_id_t hproto_id = id;\
@@ -53,6 +54,23 @@ struct HProtoData<name> {\
     }\
     static name hproto_read(const void* data) {\
         return *reinterpret_cast<const name*>(data);\
+    }\
+};
+
+#define HOTSPOT_EMPTY_OBJECT(name, id)\
+template<>\
+struct HProtoData<name> {\
+    static constexpr const hproto_id_t hproto_id = id;\
+    static constexpr size_t hproto_size(const name &) {\
+        return 0;\
+    }\
+    static bool hproto_accepts_size(size_t s) {\
+        return s == 0;\
+    }\
+    static void hproto_write(const name &obj, void *data) {\
+    }\
+    static name hproto_read(const void* data) {\
+        return name();\
     }\
 };
 

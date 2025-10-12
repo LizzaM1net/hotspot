@@ -39,6 +39,8 @@ public:
 
     Q_INVOKABLE void greetAddress(QUrl url);
 
+    Q_INVOKABLE void sendFile(QUrl url);
+
     ConnectionState connectionState() const;
 
 private:

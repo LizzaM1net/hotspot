@@ -61,8 +61,12 @@ ApplicationWindow {
 
             model: hotspot.messages
             delegate: Rectangle {
+                id: delegate
+
                 required property string from
+                required property string type
                 required property string text
+                required property string path
 
                 width: listView.width*0.7
                 height: 40
@@ -72,9 +76,30 @@ ApplicationWindow {
                 color: from == "remote" ? "green" : "red"
                 radius: 5
 
-                Text {
+                Row {
                     anchors.centerIn: parent
-                    text: parent.text
+
+                    Button {
+                        icon.name: "document"
+                        visible: delegate.type === "file"
+                        onClicked: Qt.openUrlExternally(delegate.path)
+                    }
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: delegate.text
+                    }
+                }
+            }
+
+            opacity: dropArea.containsDrag ? 0.5 : 1
+
+            DropArea {
+                id: dropArea
+
+                anchors.fill: parent
+                onDropped: (drop) => {
+                    hotspot.sendFile(drop.text)
                 }
             }
         }
