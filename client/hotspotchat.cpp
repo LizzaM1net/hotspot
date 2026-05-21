@@ -1,27 +1,13 @@
 #include "hotspotchat.h"
 
-#include <hproto.h>
+#include "hproto.h"
+#include "hproto_types.h"
 
 #include <QFile>
 #include <QTemporaryFile>
 #include <QStandardPaths>
 #include <QGuiApplication>
 #include <QDateTime>
-
-struct RouterCreateWaitroomRequest {
-    uint32_t local_ip;
-    uint16_t local_port;
-};
-HOTSPOT_SIZED_OBJECT(RouterCreateWaitroomRequest, 0x1002, 8)
-
-struct RouterRedirectAnswer {
-    uint32_t ip;
-    uint16_t port;
-};
-HOTSPOT_SIZED_OBJECT(RouterRedirectAnswer, 0x1003, 8)
-
-struct RouterGreet {};
-HOTSPOT_EMPTY_OBJECT(RouterGreet, 0x1004)
 
 struct HotspotFile {
     std::string name;
@@ -92,7 +78,7 @@ void HotspotChat::setUrl(const QUrl &newUrl) {
 
     quint32 addr = localAddress().toIPv4Address();
 
-    std::variant<RouterCreateWaitroomRequest> var = RouterCreateWaitroomRequest{addr, localPort()};
+    std::variant<RouterCreateWaitroomRequest> var = RouterCreateWaitroomRequest{addr, localPort(), 0};
     QByteArray arr(hproto_size(var), Qt::Uninitialized);
     hproto_write(var, arr.data());
 
