@@ -38,6 +38,7 @@ int main() {
     }
 
     printf("hServer listening on port %d\n", SERVER_PORT);
+    fflush(stdout);  // ensure test fixtures can read this line immediately
 
     std::optional<sockaddr_in> waiting;
     uint8_t buf[MAX_PACKET];

@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  pull_request:
+    branches: ["**"]
+  push:
+    branches: [main, master]
+
+jobs:
+  # -------------------------------------------------------------------------
+  # Build server + unit tests (no Qt required)
+  # -------------------------------------------------------------------------
+  build:
+    name: Build (server + tests)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y cmake build-essential git
+
+      - name: Configure CMake
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DBUILD_CLIENT=OFF \
+            -DBUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries
+          path: |
+            build/server/hServer
+            build/tests/unit/test_hproto
+
+  # -------------------------------------------------------------------------
+  # Catch2 unit tests (hProto serialization)
+  # -------------------------------------------------------------------------
+  unit-tests:
+    name: Unit tests (hProto)
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: binaries
+          path: build
+
+      - name: Fix permissions
+        run: chmod +x build/tests/unit/test_hproto
+
+      - name: Run unit tests
+        run: ctest --test-dir build --output-on-failure
+
+  # -------------------------------------------------------------------------
+  # pytest integration tests (server + Python UDP clients)
+  # -------------------------------------------------------------------------
+  integration-tests:
+    name: Integration tests (server + pytest)
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: binaries
+          path: build
+
+      - name: Fix permissions
+        run: chmod +x build/server/hServer
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: pip install -r tests/integration/requirements.txt
+
+      - name: Run integration tests
+        run: pytest tests/integration -v --tb=short
+        env:
+          BUILD_DIR: build
