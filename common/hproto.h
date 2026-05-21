@@ -2,8 +2,9 @@
 #define HPROTO_H
 
 #include <cstdint>
+#include <cstring>
+#include <iostream>
 #include <variant>
-#include <format>
 
 #if __BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__
 #error "Big-endian not supported"
@@ -96,7 +97,7 @@ bool hproto_try_variant_type(void *data, size_t size, hproto_id_t id, std::varia
         return false;
 
     if (!HProtoData<T>::hproto_accepts_size(size)) {
-        qWarning() << "Got object with wrong size, id:" << id;
+        std::cerr << "hproto: wrong size for id 0x" << std::hex << id << '\n';
     }
 
     var.template emplace<T>(std::move(HProtoData<T>::hproto_read(data)));
