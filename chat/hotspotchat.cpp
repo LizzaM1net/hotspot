@@ -1,60 +1,13 @@
 #include "hotspotchat.h"
 
-#include <hproto.h>
+#include "hproto.h"
+#include "hproto_router.h"
 
 #include <QFile>
 #include <QTemporaryFile>
 #include <QStandardPaths>
 #include <QGuiApplication>
 #include <QDateTime>
-
-struct RouterCreateWaitroomRequest {
-    uint32_t local_ip;
-    uint16_t local_port;
-};
-HOTSPOT_SIZED_OBJECT(RouterCreateWaitroomRequest, 0x1002, 8)
-
-struct RouterRedirectAnswer {
-    uint32_t ip;
-    uint16_t port;
-};
-HOTSPOT_SIZED_OBJECT(RouterRedirectAnswer, 0x1003, 8)
-
-struct RouterGreet {};
-HOTSPOT_EMPTY_OBJECT(RouterGreet, 0x1004)
-
-struct HotspotFile {
-    std::string name;
-    QByteArray data;
-};
-
-template<>
-struct HProtoData<HotspotFile> {
-    static constexpr const hproto_id_t hproto_id = 0x2001;
-    static constexpr size_t hproto_size(const HotspotFile &f) {
-        return HProtoData<std::string>::hproto_size(f.name) + sizeof(string_len_t) + f.data.size();
-    }
-    static bool hproto_accepts_size(size_t s) {
-        // TODO: Maybe move size validation to read
-        return s >= 2*sizeof(string_len_t);
-    }
-    static void hproto_write(const HotspotFile &f, void *data) {
-        size_t stringSize = HProtoData<std::string>::hproto_size(f.name);
-        HProtoData<std::string>::hproto_write(f.name, data);
-        string_len_t dataSize = f.data.size();
-        memcpy((char*)data+stringSize, &dataSize, sizeof(string_len_t));
-        memcpy((char*)data+stringSize+sizeof(string_len_t), f.data.data(), dataSize);
-    }
-    static HotspotFile hproto_read(const void* data) {
-        HotspotFile file;
-        file.name = HProtoData<std::string>::hproto_read(data);
-        size_t stringSize = HProtoData<std::string>::hproto_size(file.name);
-        string_len_t dataSize;
-        memcpy(&dataSize, (char*)data+stringSize, sizeof(string_len_t));
-        file.data = QByteArray((char*)data+stringSize+sizeof(string_len_t), dataSize);
-        return file;
-    }
-};
 
 HotspotChat::HotspotChat(QObject *parent)
     : QUdpSocket{parent}
@@ -136,10 +89,11 @@ void HotspotChat::sendFile(QUrl url) {
 
     QByteArray content = file.readAll();
     file.close();
+    std::vector<char> contentVector(content.begin(), content.end());
 
     QString name = file.fileName();
     name = name.mid(name.lastIndexOf("/")+1);
-    std::variant<HotspotFile> var = HotspotFile{name.toStdString(), content};
+    std::variant<HotspotFile> var = HotspotFile{name.toStdString(), contentVector};
     QByteArray arr(hproto_size(var), Qt::Uninitialized);
     hproto_write(var, arr.data());
 
@@ -189,7 +143,8 @@ void HotspotChat::readyRead() {
             QFile tmpFile(QStandardPaths::standardLocations(QStandardPaths::DownloadLocation).first()+"/"+name.first(name.lastIndexOf("."))+QDateTime::currentDateTime().toString("HH:mm:ss")+name.mid(name.lastIndexOf(".")));
             if (!tmpFile.open(QFile::WriteOnly))
                 continue;
-            tmpFile.write(file->data);
+            std::vector<char> contents = file->data;
+            tmpFile.write(contents.data(), contents.size());
             tmpFile.close();
             m_messages.append(QVariantMap({{"from", "remote"}, {"type", "file"}, {"path", "file://" + tmpFile.fileName()}, {"text", name}}));
             emit messagesChanged();

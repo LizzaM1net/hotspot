@@ -1,9 +1,10 @@
-#ifndef HPROTO_H
-#define HPROTO_H
+#pragma once
 
 #include <cstdint>
 #include <variant>
-#include <format>
+
+// logs
+#include <iostream>
 
 #if __BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__
 #error "Big-endian not supported"
@@ -74,6 +75,8 @@ struct HProtoData<name> {\
     }\
 };
 
+std::ostream& hLog();
+
 template <typename Ts>
 size_t hproto_size(std::variant<Ts> variant) {
     return std::visit([](const auto& value) {
@@ -82,7 +85,7 @@ size_t hproto_size(std::variant<Ts> variant) {
 }
 
 template <typename Ts>
-void hproto_write(std::variant<Ts> variant, void *data) {
+void hproto_write(std::variant<Ts> variant, char *data) {
     std::visit([data](const auto& value) {
         hproto_id_t id = HProtoData<std::remove_cvref_t<decltype(value)>>::hproto_id;
         memcpy(data, &id, sizeof(hproto_id_t));
@@ -91,12 +94,12 @@ void hproto_write(std::variant<Ts> variant, void *data) {
 }
 
 template <typename T, typename... Ts>
-bool hproto_try_variant_type(void *data, size_t size, hproto_id_t id, std::variant<Ts...> &var) {
+bool hproto_try_variant_type(char *data, size_t size, hproto_id_t id, std::variant<Ts...> &var) {
     if (id != HProtoData<T>::hproto_id)
         return false;
 
     if (!HProtoData<T>::hproto_accepts_size(size)) {
-        qWarning() << "Got object with wrong size, id:" << id;
+        hLog() << "Got object with wrong size, id:" << id;
     }
 
     var.template emplace<T>(std::move(HProtoData<T>::hproto_read(data)));
@@ -105,7 +108,7 @@ bool hproto_try_variant_type(void *data, size_t size, hproto_id_t id, std::varia
 }
 
 template <typename... Ts>
-std::variant<std::monostate, Ts...> hproto_read(void *data, size_t size) {
+std::variant<std::monostate, Ts...> hproto_read(char *data, size_t size) {
     hproto_id_t id;
     memcpy(&id, data, sizeof(hproto_id_t));
     std::variant<std::monostate, Ts...> var;
@@ -114,5 +117,3 @@ std::variant<std::monostate, Ts...> hproto_read(void *data, size_t size) {
 
     return var;
 }
-
-#endif // HPROTO_H
