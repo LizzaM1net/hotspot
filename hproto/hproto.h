@@ -2,9 +2,7 @@
 
 #include <cstdint>
 #include <variant>
-
-// logs
-#include <iostream>
+#include <string>
 
 #if __BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__
 #error "Big-endian not supported"
@@ -75,8 +73,6 @@ struct HProtoData<name> {\
     }\
 };
 
-std::ostream& hLog();
-
 template <typename Ts>
 size_t hproto_size(std::variant<Ts> variant) {
     return std::visit([](const auto& value) {
@@ -98,9 +94,8 @@ bool hproto_try_variant_type(char *data, size_t size, hproto_id_t id, std::varia
     if (id != HProtoData<T>::hproto_id)
         return false;
 
-    if (!HProtoData<T>::hproto_accepts_size(size)) {
-        hLog() << "Got object with wrong size, id:" << id;
-    }
+    if (!HProtoData<T>::hproto_accepts_size(size))
+        return false;
 
     var.template emplace<T>(std::move(HProtoData<T>::hproto_read(data)));
 

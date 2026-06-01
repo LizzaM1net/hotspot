@@ -2,6 +2,7 @@
 #include <unistd.h>
 
 #include "hproto.h"
+#include "hlog.h"
 #include "hproto_router.h"
 
 static void send_redirect(int sock, const sockaddr_in &to, const sockaddr_in &peer) {
@@ -42,12 +43,12 @@ int main() {
         struct sockaddr_in from;
         socklen_t len = sizeof(from);
 
-        std::cout << "Wating packet" << std::endl;
+        hLog() << "Wating packet";
 
         int n = recvfrom(sockfd, buffer, sizeof(buffer), 0,
                          (struct sockaddr *) &from, &len);
 
-        std::cout << "Got some packet" << std::endl;
+        hLog() << "Got some packet";
 
         std::variant var = hproto_read<RouterCreateWaitroomRequest>(buffer, n);
         if (RouterCreateWaitroomRequest* req = std::get_if<RouterCreateWaitroomRequest>(&var)) {
@@ -58,10 +59,10 @@ int main() {
                 send_redirect(sockfd, from, *waiting);
                 send_redirect(sockfd, *waiting, from);
                 waiting.reset();
-                std::cout << "Redirected peers to each other" << std::endl;
+                hLog() << "Redirected peers to each other";
             } else {
                 waiting = from;
-                std::cout << "Stored waiting peer" << std::endl;
+                hLog() << "Stored waiting peer";
             }
         }
     }

@@ -1,6 +1,7 @@
 add_library(hproto
+    hlog.h
+    hlog.cpp
     hproto.h
-    hproto.cpp
     hproto_router.h
 )
 
