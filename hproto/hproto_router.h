@@ -1,4 +1,5 @@
 #include "hproto.h"
+#include "hbuffer.h"
 
 #include <vector>
 
@@ -26,28 +27,20 @@ template<>
 struct HProtoData<HotspotFile> {
     static constexpr const hproto_id_t hproto_id = 0x2001;
     static constexpr size_t hproto_size(const HotspotFile &f) {
-        return HProtoData<std::string>::hproto_size(f.name) + sizeof(string_len_t) + f.data.size();
+        return sizeof(h_size_t) + f.name.size() + sizeof(h_size_t) + f.data.size();
     }
     static bool hproto_accepts_size(size_t s) {
         // TODO: Maybe move size validation to read
-        return s >= 2*sizeof(string_len_t);
+        return s >= 2*sizeof(h_size_t);
     }
-    static void hproto_write(const HotspotFile &f, void *data) {
-        size_t stringSize = HProtoData<std::string>::hproto_size(f.name);
-        HProtoData<std::string>::hproto_write(f.name, data);
-        string_len_t dataSize = f.data.size();
-        memcpy((char*)data+stringSize, &dataSize, sizeof(string_len_t));
-        memcpy((char*)data+stringSize+sizeof(string_len_t), f.data.data(), dataSize);
+    static void hproto_write(const HotspotFile &f, char *data) {
+        write_blob(data, f.name);
+        write_blob(data, f.data);
     }
     static HotspotFile hproto_read(const char* data) {
         HotspotFile file;
-        file.name = HProtoData<std::string>::hproto_read(data);
-        size_t stringSize = HProtoData<std::string>::hproto_size(file.name);
-        string_len_t dataSize;
-        data += stringSize;
-        memcpy(&dataSize, (char*)data, sizeof(string_len_t));
-        data += sizeof(string_len_t);
-        file.data = std::vector<char>((char*)data, (char*)data+dataSize);
+        file.name = read_blob<std::string>(data);
+        file.data = read_blob<std::vector<char>>(data);
         return file;
     }
 };
