@@ -9,7 +9,7 @@ qt_add_executable(hchat
 )
 
 qt_add_qml_module(hchat
-    URI hClient
+    URI HotspotChat
     VERSION 1.0
     QML_FILES
         Main.qml

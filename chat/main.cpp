@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
         &app,
         []() { QCoreApplication::exit(-1); },
         Qt::QueuedConnection);
-    engine.loadFromModule("hClient", "Main");
+    engine.loadFromModule("HotspotChat", "Main");
 
     return app.exec();
 }
