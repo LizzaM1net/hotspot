@@ -4,8 +4,9 @@
 #include "hproto.h"
 #include "hlog.h"
 #include "hproto_router.h"
+#include "hudpchannel.h"
 
-static void send_redirect(int sock, const sockaddr_in &to, const sockaddr_in &peer) {
+static void send_redirect(HUdpChannel &chan, const sockaddr_in &to, const sockaddr_in &peer) {
     RouterRedirectAnswer answer {
         ntohl(peer.sin_addr.s_addr),
         ntohs(peer.sin_port)
@@ -14,39 +15,23 @@ static void send_redirect(int sock, const sockaddr_in &to, const sockaddr_in &pe
 
     char buf[sizeof(hproto_id_t) + sizeof(RouterRedirectAnswer)];
     hproto_write(v, buf);
-    sendto(sock, buf, sizeof(buf), 0,
-           reinterpret_cast<const sockaddr *>(&to), sizeof(to));
+    chan.write(buf, sizeof(buf), to);
 }
 
 int main() {
-    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sockfd < 0) {
-        hLog() << "Cannot create socket";
+    HUdpChannel channel(INADDR_ANY, 17171);
+    if (!channel.isValid())
         return 1;
-    }
-
-    struct sockaddr_in addr = {
-        .sin_family = AF_INET,
-        .sin_port   = htons(17171),
-        .sin_addr = { .s_addr = INADDR_ANY }
-    };
-    if (bind(sockfd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-        hLog() << "Cannot bind socket to port";
-        close(sockfd);
-        return 1;
-    }
 
     std::optional<sockaddr_in> waiting;
 
     while (true) {
         char buffer[1500];
         struct sockaddr_in from;
-        socklen_t len = sizeof(from);
 
         hLog() << "Wating packet";
 
-        int n = recvfrom(sockfd, buffer, sizeof(buffer), 0,
-                         (struct sockaddr *) &from, &len);
+        int n = channel.read(buffer, sizeof(buffer), &from);
 
         hLog() << "Got some packet";
 
@@ -56,8 +41,8 @@ int main() {
                                     && waiting->sin_port == from.sin_port;
 
             if (waiting.has_value() && !sameAddr) {
-                send_redirect(sockfd, from, *waiting);
-                send_redirect(sockfd, *waiting, from);
+                send_redirect(channel, from, *waiting);
+                send_redirect(channel, *waiting, from);
                 waiting.reset();
                 hLog() << "Redirected peers to each other";
             } else {
