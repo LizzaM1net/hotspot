@@ -2,18 +2,17 @@
 
 #include "hproto.h"
 #include "hbuffer.h"
+#include "hproto_types.h"
 
 #include <vector>
 
 struct RouterCreateWaitroomRequest {
-    uint32_t local_ip;
-    uint16_t local_port;
+    HSocketAddress localAddress;
 };
 HOTSPOT_SIZED_OBJECT(RouterCreateWaitroomRequest, 0x1002, 8)
 
 struct RouterRedirectAnswer {
-    uint32_t ip;
-    uint16_t port;
+    HSocketAddress peerAddress;
 };
 HOTSPOT_SIZED_OBJECT(RouterRedirectAnswer, 0x1003, 8)
 

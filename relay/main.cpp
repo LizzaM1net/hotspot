@@ -4,53 +4,66 @@
 #include "hproto.h"
 #include "hlog.h"
 #include "hproto_router.h"
+#include "hproto_types.h"
 #include "hudpchannel.h"
 
-static void send_redirect(HUdpChannel &chan, const sockaddr_in &to, const sockaddr_in &peer) {
-    RouterRedirectAnswer answer {
-        ntohl(peer.sin_addr.s_addr),
-        ntohs(peer.sin_port)
-    };
+static void send_redirect(HUdpChannel *chan, HSocketAddress peer) {
+    RouterRedirectAnswer answer { peer };
     std::variant<RouterRedirectAnswer> v = answer;
 
     char buf[sizeof(hproto_id_t) + sizeof(RouterRedirectAnswer)];
     hproto_write(v, buf);
-    chan.write(buf, sizeof(buf), to);
+    chan->write(buf, sizeof(buf));
 }
 
+struct SessionData {
+    HUdpChannel *channel;
+    bool isAwaitingPeer = false;
+};
+
 int main() {
-    HUdpChannel channel(INADDR_ANY, 17171);
-    if (!channel.isValid())
-        return 1;
+    std::map<HSocketAddress, SessionData> sessions;
 
-    std::optional<sockaddr_in> waiting;
+    HUdpServer server(INADDR_ANY, 17171, [&sessions](HUdpChannel *channel) -> Task {
+        sessions[channel->peer()] = {channel};
 
-    while (true) {
         char buffer[1500];
-        struct sockaddr_in from;
 
-        hLog() << "Wating packet";
+        while (true) {
+            ssize_t n = co_await channel->read(buffer, sizeof(buffer));
+            if (n < 0)
+                continue;
 
-        int n = channel.read(buffer, sizeof(buffer), &from);
+            std::variant var = hproto_read<RouterCreateWaitroomRequest>(buffer, n);
+            if (RouterCreateWaitroomRequest* req = std::get_if<RouterCreateWaitroomRequest>(&var)) {
+                HUdpChannel *other = nullptr;
+                for (auto& [sender, candidate] : sessions) {
+                    if (sender == channel->peer()
+                        || !candidate.isAwaitingPeer)
+                        continue;
 
-        hLog() << "Got some packet";
+                    other = candidate.channel;
+                    break;
+                }
 
-        std::variant var = hproto_read<RouterCreateWaitroomRequest>(buffer, n);
-        if (RouterCreateWaitroomRequest* req = std::get_if<RouterCreateWaitroomRequest>(&var)) {
-            bool sameAddr = waiting && waiting->sin_addr.s_addr == from.sin_addr.s_addr
-                                    && waiting->sin_port == from.sin_port;
+                if (!other) {
+                    sessions[channel->peer()].isAwaitingPeer = true;
+                    continue;
+                }
 
-            if (waiting.has_value() && !sameAddr) {
-                send_redirect(channel, from, *waiting);
-                send_redirect(channel, *waiting, from);
-                waiting.reset();
+                send_redirect(other, channel->peer());
+                other->finishLater();
+                sessions.erase(other->peer());
+                send_redirect(channel, other->peer());
+                channel->finishLater();
+                sessions.erase(channel->peer());
                 hLog() << "Redirected peers to each other";
-            } else {
-                waiting = from;
-                hLog() << "Stored waiting peer";
             }
         }
-    }
+    });
 
-    hLog() << "All good";
+    if (!server.isValid())
+        return 1;
+
+    server.loop();
 }

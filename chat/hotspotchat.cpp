@@ -2,6 +2,7 @@
 
 #include "hproto.h"
 #include "hproto_router.h"
+#include "hproto_types.h"
 
 #include <QFile>
 #include <QTemporaryFile>
@@ -44,8 +45,9 @@ void HotspotChat::setUrl(const QUrl &newUrl) {
     emit urlChanged();
 
     quint32 addr = localAddress().toIPv4Address();
+    HSocketAddress address(addr, localPort());
 
-    std::variant<RouterCreateWaitroomRequest> var = RouterCreateWaitroomRequest{addr, localPort()};
+    std::variant<RouterCreateWaitroomRequest> var = RouterCreateWaitroomRequest{ address };
     QByteArray arr(hproto_size(var), Qt::Uninitialized);
     hproto_write(var, arr.data());
 
@@ -129,11 +131,11 @@ void HotspotChat::readyRead() {
             m_messages.append(QVariantMap({{"from", "remote"}, {"type", "text"}, {"path", ""}, {"text", text}}));
             emit messagesChanged();
         } else if (RouterRedirectAnswer *answer = std::get_if<RouterRedirectAnswer>(&var)) {
-            QHostAddress addr(answer->ip);
+            QHostAddress addr(answer->peerAddress.ip());
             QUrl url;
             url.setScheme("h");
             url.setHost(addr.toString());
-            url.setPort(answer->port);
+            url.setPort(answer->peerAddress.port());
 
             if (url.isValid()) {
                 emit redirected(url);
