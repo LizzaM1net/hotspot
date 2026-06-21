@@ -1,10 +1,13 @@
 #ifndef HOTSPOTCHAT_H
 #define HOTSPOTCHAT_H
 
-#include <QQmlEngine>
-#include <QUdpSocket>
+#include "hudpchannel.h"
 
-class HotspotChat : public QUdpSocket
+#include <QQmlEngine>
+#include <QObject>
+#include <QSocketNotifier>
+
+class HotspotChat : public QObject
 {
     Q_OBJECT
     QML_ELEMENT
@@ -37,17 +40,16 @@ public:
 
     Q_INVOKABLE void send(QString text);
 
-    Q_INVOKABLE void greetAddress(QUrl url);
-
     Q_INVOKABLE void sendFile(QUrl url);
 
     ConnectionState connectionState() const;
 
 private:
     void setConnectionState(ConnectionState newConnectionState);
+    Task processDatagram(HUdpChannel *channel);
 
-private:
-    quint16 m_port = 0;
+    HUdpServer m_server;
+    HUdpChannel *m_currentConnection = nullptr;
     QUrl m_url;
     QVariantList m_messages;
 
@@ -62,9 +64,6 @@ signals:
     void redirected(QUrl url);
 
     void connectionStateChanged();
-
-private slots:
-    void readyRead();
 };
 
 #endif // HOTSPOTCHAT_H

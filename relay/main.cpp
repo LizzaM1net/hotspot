@@ -65,5 +65,7 @@ int main() {
     if (!server.isValid())
         return 1;
 
-    server.loop();
+    while (true)
+        if (!server.processDatagram())
+            break;
 }

@@ -7,33 +7,33 @@
 class HSocketAddress {
 public:
     HSocketAddress(uint32_t ip, uint16_t port) {
-        m_ip = htonl(ip);
-        m_port = htons(port);
+        m_ip = ip;
+        m_port = port;
     }
 
     HSocketAddress(sockaddr_in address) {
-        m_ip = address.sin_addr.s_addr;
-        m_port = address.sin_port;
+        m_ip = ntohl(address.sin_addr.s_addr);
+        m_port = ntohs(address.sin_port);
     }
 
-    uint32_t ip() const { return ntohl(m_ip); }
-    void setIp(uint32_t ip) { m_ip = htonl(ip); }
+    uint32_t ip() const { return m_ip; }
+    void setIp(uint32_t ip) { m_ip = ip; }
 
-    uint16_t port() const { return ntohs(m_port); }
-    void setPort(uint16_t port) { m_port = htons(port); }
+    uint16_t port() const { return m_port; }
+    void setPort(uint16_t port) { m_port = port; }
 
     sockaddr_in sockaddr() const {
         return sockaddr_in {
             .sin_family = AF_INET,
-            .sin_port   = m_port,
-            .sin_addr   = { m_ip },
+            .sin_port   = htons(m_port),
+            .sin_addr   = { htonl(m_ip) },
         };
     }
 
     auto operator<=>(const HSocketAddress& other) const {
-        if (auto cmp = ntohl(m_ip) <=> ntohl(other.m_ip); cmp != 0)
+        if (auto cmp = m_ip <=> other.m_ip; cmp != 0)
             return cmp;
-        return ntohs(m_port) <=> ntohs(other.m_port);
+        return m_port <=> other.m_port;
     }
     bool operator==(const HSocketAddress& other) const = default;
 

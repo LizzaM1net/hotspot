@@ -43,10 +43,6 @@ class HUdpServer;
 class HUdpChannel {
     friend class HUdpServer;
 public:
-    HUdpChannel(HUdpServer *server, HSocketAddress peer,
-                std::function<Task(HUdpChannel *)> handler);
-    ~HUdpChannel();
-
     HUdpChannel(const HUdpChannel&) = delete;
     HUdpChannel& operator=(const HUdpChannel&) = delete;
 
@@ -58,6 +54,10 @@ public:
     HSocketAddress peer() const;
 
 private:
+    HUdpChannel(HUdpServer *server, HSocketAddress peer,
+                std::function<Task(HUdpChannel *)> handler);
+    ~HUdpChannel();
+
     std::coroutine_handle<Task::promise_type> m_handle;
 
     HSocketAddress m_peer;
@@ -72,8 +72,11 @@ public:
     ~HUdpServer();
 
     bool isValid();
-    void loop();
+    HSocketAddress address();
+    bool processDatagram();
+    int sockfd();
 
+    HUdpChannel *channelToAddress(HSocketAddress address);
     void finishLater(HUdpChannel *channel);
 
 private:

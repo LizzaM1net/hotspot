@@ -69,51 +69,75 @@ bool HUdpServer::isValid() {
     return m_valid;
 }
 
-void HUdpServer::loop() {
-    while (true) {
-        struct sockaddr_in sender;
-        socklen_t sender_len = sizeof(sender);
-        char dummy[1];
+HSocketAddress HUdpServer::address() {
+    struct sockaddr_in sin;
+    socklen_t len = sizeof(sin);
+    if (getsockname(m_sockfd, (struct sockaddr *)&sin, &len) == -1) {
+        perror("getsockname");
+        // TODO: workaround exception here
+    }
 
-        if (recvfrom(m_sockfd, dummy, sizeof(dummy),
-                    MSG_PEEK,
-                    (struct sockaddr *)&sender, &sender_len) < 0) {
-            if (errno == EINTR)
-                continue;
-            hLog() << "Fatal socket error:" << strerror(errno);
-            exit(1);
-        }
+    return {sin};
+}
 
-        HUdpChannel *channel = m_chans[sender];
-        if (channel == nullptr) {
-            channel = new HUdpChannel(this, sender, m_handler);
-            m_chans[sender] = channel;
-        }
-        ReadAwaitable *pending = channel->m_handle.promise().pending;
-        if (pending)
-            pending->readSize = recv(m_sockfd, pending->data,
-                                    pending->size, 0);
-        else // Skip datagram if channel dont want to eat
-            recv(m_sockfd, dummy, sizeof(dummy), 0);
-        channel->m_handle.resume();
+bool HUdpServer::processDatagram() {
+    struct sockaddr_in sender;
+    socklen_t sender_len = sizeof(sender);
+    char dummy[1];
 
-        if (channel->m_handle.done()) {
-            hLog() << "coroutine done";
-            delete channel;
-            m_chans.erase(sender);
-        }
+    if (recvfrom(m_sockfd, dummy, sizeof(dummy),
+                MSG_PEEK,
+                (struct sockaddr *)&sender, &sender_len) < 0) {
+        if (errno == EINTR || errno == EWOULDBLOCK)
+            return true;
+        hLog() << "Fatal socket error:" << strerror(errno);
+        return false;
+    }
 
-        for (const HUdpChannel *finished : m_finished) {
-            for (auto& [sender, chan] : m_chans) {
-                if (chan == finished) {
-                    delete chan;
-                    m_chans.erase(sender);
-                    break;
-                }
+    HUdpChannel *channel = m_chans[sender];
+    if (channel == nullptr) {
+        channel = new HUdpChannel(this, sender, m_handler);
+        m_chans[sender] = channel;
+    }
+    ReadAwaitable *pending = channel->m_handle.promise().pending;
+    if (pending)
+        pending->readSize = recv(m_sockfd, pending->data,
+                                pending->size, 0);
+    else // Skip datagram if channel dont want to eat
+        recv(m_sockfd, dummy, sizeof(dummy), 0);
+    channel->m_handle.resume();
+
+    if (channel->m_handle.done()) {
+        hLog() << "coroutine done";
+        delete channel;
+        m_chans.erase(sender);
+    }
+
+    for (const HUdpChannel *finished : m_finished) {
+        for (auto& [sender, chan] : m_chans) {
+            if (chan == finished) {
+                delete chan;
+                m_chans.erase(sender);
+                break;
             }
         }
-        m_finished.clear();
     }
+    m_finished.clear();
+
+    return true;
+}
+
+int HUdpServer::sockfd() {
+    return m_sockfd;
+}
+
+HUdpChannel *HUdpServer::channelToAddress(HSocketAddress address) {
+    HUdpChannel *channel = m_chans[address];
+    if (channel == nullptr) {
+        channel = new HUdpChannel(this, address, m_handler);
+        m_chans[address] = channel;
+    }
+    return channel;
 }
 
 void HUdpServer::finishLater(HUdpChannel *channel) {

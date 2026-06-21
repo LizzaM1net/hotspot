@@ -17,11 +17,8 @@ ApplicationWindow {
         onRedirected: (url) => {
             addressField.text = url
             // hotspot.send("hei?")
-            greetAddress(url)
             addressField.focus = false
         }
-
-        Component.onCompleted: greetAddress("h://94.159.103.63:17172")
     }
 
     ColumnLayout {
