@@ -4,6 +4,7 @@
 #include "hproto_types.h"
 
 #include <cstring>
+#include <memory>
 #include <netinet/in.h>
 #include <unistd.h>
 
@@ -18,8 +19,8 @@ HUdpChannel::~HUdpChannel() {
     m_handle.destroy();
 }
 
-void HUdpChannel::finishLater() {
-    m_server->finishLater(this);
+void HUdpChannel::close() {
+    m_server->closeChannel(this);
 }
 
 ReadAwaitable HUdpChannel::read(char *data, size_t size) {
@@ -58,9 +59,6 @@ HUdpServer::HUdpServer(in_addr_t addr, uint16_t port,
 }
 
 HUdpServer::~HUdpServer() {
-    for (auto& [sender, channel] : m_chans)
-        delete channel;
-
     if (m_valid)
         close(m_sockfd);
 }
@@ -94,9 +92,9 @@ bool HUdpServer::processDatagram() {
         return false;
     }
 
-    HUdpChannel *channel = m_chans[sender];
-    if (channel == nullptr) {
-        channel = new HUdpChannel(this, sender, m_handler);
+    std::shared_ptr<HUdpChannel> channel = m_chans[sender];
+    if (!channel) {
+        channel = std::make_shared<HUdpChannel>(this, sender, m_handler);
         m_chans[sender] = channel;
     }
     ReadAwaitable *pending = channel->m_handle.promise().pending;
@@ -107,22 +105,8 @@ bool HUdpServer::processDatagram() {
         recv(m_sockfd, dummy, sizeof(dummy), 0);
     channel->m_handle.resume();
 
-    if (channel->m_handle.done()) {
-        hLog() << "coroutine done";
-        delete channel;
+    if (channel->m_handle.done())
         m_chans.erase(sender);
-    }
-
-    for (const HUdpChannel *finished : m_finished) {
-        for (auto& [sender, chan] : m_chans) {
-            if (chan == finished) {
-                delete chan;
-                m_chans.erase(sender);
-                break;
-            }
-        }
-    }
-    m_finished.clear();
 
     return true;
 }
@@ -131,17 +115,17 @@ int HUdpServer::sockfd() {
     return m_sockfd;
 }
 
-HUdpChannel *HUdpServer::channelToAddress(HSocketAddress address) {
-    HUdpChannel *channel = m_chans[address];
-    if (channel == nullptr) {
-        channel = new HUdpChannel(this, address, m_handler);
+std::shared_ptr<HUdpChannel> HUdpServer::channelToAddress(HSocketAddress address) {
+    std::shared_ptr<HUdpChannel> channel = m_chans[address];
+    if (!channel) {
+        channel = std::make_shared<HUdpChannel>(this, address, m_handler);
         m_chans[address] = channel;
     }
     return channel;
 }
 
-void HUdpServer::finishLater(HUdpChannel *channel) {
-    m_finished.push_back(channel);
+void HUdpServer::closeChannel(HUdpChannel *channel) {
+    m_chans.erase(channel->peer());
 }
 
 ssize_t HUdpServer::write(const char *data, size_t size, HSocketAddress addr) {

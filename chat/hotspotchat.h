@@ -6,6 +6,7 @@
 #include <QQmlEngine>
 #include <QObject>
 #include <QSocketNotifier>
+#include <memory>
 
 class HotspotChat : public QObject
 {
@@ -49,7 +50,7 @@ private:
     Task processDatagram(HUdpChannel *channel);
 
     HUdpServer m_server;
-    HUdpChannel *m_currentConnection = nullptr;
+    std::shared_ptr<HUdpChannel> m_currentConnection;
     QUrl m_url;
     QVariantList m_messages;
 

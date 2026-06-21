@@ -47,7 +47,7 @@ void HotspotChat::setUrl(const QUrl &newUrl) {
     hproto_write(var, arr.data());
 
     if (m_currentConnection)
-        m_currentConnection->finishLater();
+        m_currentConnection->close();
 
     HSocketAddress peer(QHostAddress(m_url.host()).toIPv4Address(), m_url.port());
     m_currentConnection = m_server.channelToAddress(peer);

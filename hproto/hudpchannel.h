@@ -43,10 +43,14 @@ class HUdpServer;
 class HUdpChannel {
     friend class HUdpServer;
 public:
+    HUdpChannel(HUdpServer *server, HSocketAddress peer,
+                std::function<Task(HUdpChannel *)> handler);
+    ~HUdpChannel();
+
     HUdpChannel(const HUdpChannel&) = delete;
     HUdpChannel& operator=(const HUdpChannel&) = delete;
 
-    void finishLater();
+    void close();
 
     ReadAwaitable read(char *data, size_t size);
     ssize_t write(const char *data, size_t size);
@@ -54,10 +58,6 @@ public:
     HSocketAddress peer() const;
 
 private:
-    HUdpChannel(HUdpServer *server, HSocketAddress peer,
-                std::function<Task(HUdpChannel *)> handler);
-    ~HUdpChannel();
-
     std::coroutine_handle<Task::promise_type> m_handle;
 
     HSocketAddress m_peer;
@@ -76,8 +76,8 @@ public:
     bool processDatagram();
     int sockfd();
 
-    HUdpChannel *channelToAddress(HSocketAddress address);
-    void finishLater(HUdpChannel *channel);
+    std::shared_ptr<HUdpChannel> channelToAddress(HSocketAddress address);
+    void closeChannel(HUdpChannel *channel);
 
 private:
     ssize_t write(const char *data, size_t size, HSocketAddress addr);
@@ -86,6 +86,5 @@ private:
     int m_sockfd = 0;
 
     std::function<Task(HUdpChannel *)> m_handler;
-    std::map<HSocketAddress, HUdpChannel *> m_chans;
-    std::vector<HUdpChannel *> m_finished;
+    std::map<HSocketAddress, std::shared_ptr<HUdpChannel>> m_chans;
 };

@@ -22,10 +22,14 @@ struct SessionData {
 };
 
 int main() {
+    hLog() << "Starting hotspot relay server";
+
     std::map<HSocketAddress, SessionData> sessions;
 
     HUdpServer server(INADDR_ANY, 17171, [&sessions](HUdpChannel *channel) -> Task {
         sessions[channel->peer()] = {channel};
+
+        hLog() << "Got new peer";
 
         char buffer[1500];
 
@@ -52,11 +56,11 @@ int main() {
                 }
 
                 send_redirect(other, channel->peer());
-                other->finishLater();
-                sessions.erase(other->peer());
                 send_redirect(channel, other->peer());
-                channel->finishLater();
+                sessions.erase(other->peer());
                 sessions.erase(channel->peer());
+                other->close();
+                channel->close();
                 hLog() << "Redirected peers to each other";
             }
         }
