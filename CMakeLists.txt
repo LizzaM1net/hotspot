@@ -6,6 +6,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 20)
 
+enable_testing()
+
 add_subdirectory(hproto)
 add_subdirectory(chat)
 add_subdirectory(relay)
+add_subdirectory(tests)
