@@ -56,10 +56,14 @@ struct HProtoData<std::string> {
         // TODO: Maybe move size validation to read
         return s >= sizeof(h_size_t);
     }
-    static void hproto_write(const std::string &s, char* data) {
-        write_blob(data, s);
-    }
-    static std::string hproto_read(const char* data) {
-        return read_blob<std::string>(data);
-    }
 };
+
+template <>
+void hproto_write<std::string>(const std::string &s, char* data) {
+    write_blob(data, s);
+}
+
+template <>
+std::string hproto_read<std::string>(const char* data) {
+    return read_blob<std::string>(data);
+}
