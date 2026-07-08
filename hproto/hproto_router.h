@@ -29,10 +29,6 @@ struct HProtoData<HotspotFile> {
     static constexpr size_t hproto_size(const HotspotFile &f) {
         return sizeof(h_size_t) + f.name.size() + sizeof(h_size_t) + f.data.size();
     }
-    static bool hproto_accepts_size(size_t s) {
-        // TODO: Maybe move size validation to read
-        return s >= 2*sizeof(h_size_t);
-    }
     static void hproto_write(const HotspotFile &f, char *data) {
         write_blob(data, f.name);
         write_blob(data, f.data);

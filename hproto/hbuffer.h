@@ -51,10 +51,6 @@ struct HProtoData<std::string> {
     static constexpr size_t hproto_size(const std::string &s) {
         return sizeof(h_size_t) + s.size();
     }
-    static bool hproto_accepts_size(size_t s) {
-        // TODO: Maybe move size validation to read
-        return s >= sizeof(h_size_t);
-    }
 };
 
 template <>

@@ -63,9 +63,6 @@ struct HProtoData<name> {\
     static constexpr size_t hproto_size(const name &) {\
         return size;\
     }\
-    static bool hproto_accepts_size(size_t s) {\
-        return s == size;\
-    }\
 };
 
 #define HOTSPOT_EMPTY_OBJECT(name)\
@@ -73,9 +70,6 @@ template<>\
 struct HProtoData<name> {\
     static constexpr size_t hproto_size(const name &) {\
         return 0;\
-    }\
-    static bool hproto_accepts_size(size_t s) {\
-        return s == 0;\
     }\
 };
 
@@ -98,9 +92,6 @@ void hproto_write(std::variant<Args> variant, char *data) {
 template <typename T, typename... Ts>
 bool hproto_try_variant_type(const char *data, size_t size, hproto_id_t id, std::variant<Ts...> &var) {
     if (id != HProtoId<T>::id)
-        return false;
-
-    if (!HProtoData<T>::hproto_accepts_size(size))
         return false;
 
     var.template emplace<T>(std::move(hproto_read<T>(data)));
