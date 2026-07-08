@@ -48,7 +48,6 @@ T read_blob(const char*& ptr) {
 
 template<>
 struct HProtoData<std::string> {
-    static constexpr const hproto_id_t hproto_id = 0x0002;
     static constexpr size_t hproto_size(const std::string &s) {
         return sizeof(h_size_t) + s.size();
     }

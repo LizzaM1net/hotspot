@@ -9,15 +9,15 @@
 struct RouterCreateWaitroomRequest {
     HSocketAddress localAddress;
 };
-HOTSPOT_SIZED_OBJECT(RouterCreateWaitroomRequest, 0x1002, 8)
+HOTSPOT_SIZED_OBJECT(RouterCreateWaitroomRequest, 8)
 
 struct RouterRedirectAnswer {
     HSocketAddress peerAddress;
 };
-HOTSPOT_SIZED_OBJECT(RouterRedirectAnswer, 0x1003, 8)
+HOTSPOT_SIZED_OBJECT(RouterRedirectAnswer, 8)
 
 struct RouterGreet {};
-HOTSPOT_EMPTY_OBJECT(RouterGreet, 0x1004)
+HOTSPOT_EMPTY_OBJECT(RouterGreet)
 
 struct HotspotFile {
     std::string name;
@@ -26,7 +26,6 @@ struct HotspotFile {
 
 template<>
 struct HProtoData<HotspotFile> {
-    static constexpr const hproto_id_t hproto_id = 0x2001;
     static constexpr size_t hproto_size(const HotspotFile &f) {
         return sizeof(h_size_t) + f.name.size() + sizeof(h_size_t) + f.data.size();
     }

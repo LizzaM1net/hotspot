@@ -5,6 +5,7 @@ add_library(hproto
     hproto.h
     hproto_types.h
     hproto_router.h
+    hproto_reflection.h
     hudpchannel.h
     hudpchannel.cpp
 )

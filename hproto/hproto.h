@@ -6,11 +6,12 @@
 #include <type_traits>
 #include <variant>
 
+#include "hproto_reflection.h"
+
 #if __BYTE_ORDER__ != __ORDER_LITTLE_ENDIAN__
 #error "Big-endian not supported"
 #endif
 
-typedef uint32_t hproto_id_t;
 typedef uint64_t h_size_t;
 
 template <typename T>
@@ -55,11 +56,10 @@ T hproto_read(const char* data) {
     return *reinterpret_cast<const T*>(data);
 }
 
-#define HOTSPOT_SIZED_OBJECT(name, id, size)\
+#define HOTSPOT_SIZED_OBJECT(name, size)\
 static_assert(sizeof(name) == size, "Bad hotspot type size: "#name);\
 template<>\
 struct HProtoData<name> {\
-    static constexpr const hproto_id_t hproto_id = id;\
     static constexpr size_t hproto_size(const name &) {\
         return size;\
     }\
@@ -68,10 +68,9 @@ struct HProtoData<name> {\
     }\
 };
 
-#define HOTSPOT_EMPTY_OBJECT(name, id)\
+#define HOTSPOT_EMPTY_OBJECT(name)\
 template<>\
 struct HProtoData<name> {\
-    static constexpr const hproto_id_t hproto_id = id;\
     static constexpr size_t hproto_size(const name &) {\
         return 0;\
     }\
@@ -90,7 +89,7 @@ size_t hproto_size(std::variant<Ts> variant) {
 template <typename Args>
 void hproto_write(std::variant<Args> variant, char *data) {
     std::visit([data](const auto& value) {
-        hproto_id_t id = HProtoData<std::remove_cvref_t<decltype(value)>>::hproto_id;
+        hproto_id_t id = HProtoId<std::remove_cvref_t<decltype(value)>>::id;
         memcpy(data, &id, sizeof(hproto_id_t));
         hproto_write(value, data+sizeof(hproto_id_t));
     }, variant);
@@ -98,7 +97,7 @@ void hproto_write(std::variant<Args> variant, char *data) {
 
 template <typename T, typename... Ts>
 bool hproto_try_variant_type(const char *data, size_t size, hproto_id_t id, std::variant<Ts...> &var) {
-    if (id != HProtoData<T>::hproto_id)
+    if (id != HProtoId<T>::id)
         return false;
 
     if (!HProtoData<T>::hproto_accepts_size(size))

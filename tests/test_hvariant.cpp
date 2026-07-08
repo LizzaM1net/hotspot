@@ -4,11 +4,11 @@
 #include <variant>
 
 struct StructA {};
-HOTSPOT_EMPTY_OBJECT(StructA, 0x01)
+HOTSPOT_EMPTY_OBJECT(StructA)
 struct StructB {};
-HOTSPOT_EMPTY_OBJECT(StructB, 0x02)
+HOTSPOT_EMPTY_OBJECT(StructB)
 struct StructC {};
-HOTSPOT_EMPTY_OBJECT(StructC, 0x03)
+HOTSPOT_EMPTY_OBJECT(StructC)
 
 int main() {
     {
