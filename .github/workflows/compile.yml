@@ -9,12 +9,18 @@ on:
 
 jobs:
   build-linux:
-    name: Build & Test (${{ matrix.compiler }})
-    runs-on: ubuntu-latest
+    name: Build & Test (${{ matrix.compiler }}, ${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        arch: [x86_64, arm64]
+        compiler: [gcc, clang]
         include:
+          - arch: x86_64
+            os: ubuntu-26.04
+          - arch: arm64
+            os: ubuntu-26.04-arm
           - compiler: gcc
             cc: gcc
             cxx: g++
