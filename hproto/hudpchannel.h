@@ -5,6 +5,7 @@
 #include <functional>
 #include <map>
 #include <coroutine>
+#include <memory>
 
 #include "hproto_types.h"
 
