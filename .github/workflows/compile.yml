@@ -47,7 +47,6 @@ jobs:
             clang \
             qt6-base-dev \
             qt6-declarative-dev \
-            libgl1-mesa-dev \
             catch2
 
       - name: Configure
