@@ -62,3 +62,9 @@ template <>
 std::string hproto_read<std::string>(const char* data) {
     return read_blob<std::string>(data);
 }
+
+template <>
+struct HProtoId<std::string> {
+    static constexpr std::string_view name = "HString";
+    static constexpr hproto_id_t id = fnv1a_hash(name.data(), name.size());
+};
