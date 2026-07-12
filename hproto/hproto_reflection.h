@@ -32,7 +32,11 @@ constexpr hproto_id_t fnv1a_hash(const char *data, size_t size) {
 }
 
 template <typename T>
-struct HProtoId {
+struct HProtoId {};
+
+template <typename T>
+requires std::is_aggregate_v<T> || std::is_arithmetic_v<T>
+struct HProtoId<T> {
     static constexpr std::string_view name = hproto_type_name<T>();
     static constexpr hproto_id_t id = fnv1a_hash(name.data(), name.size());
 };
