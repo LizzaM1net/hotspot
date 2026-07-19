@@ -83,7 +83,7 @@ size_t hproto_size(std::variant<Ts> variant) {
 template <typename Args>
 void hproto_write(std::variant<Args> variant, char *data) {
     std::visit([data](const auto& value) {
-        hproto_id_t id = HProtoId<std::remove_cvref_t<decltype(value)>>::id;
+        hproto_id_t id = hproto_id<std::remove_cvref_t<decltype(value)>>();
         memcpy(data, &id, sizeof(hproto_id_t));
         hproto_write(value, data+sizeof(hproto_id_t));
     }, variant);
@@ -91,7 +91,7 @@ void hproto_write(std::variant<Args> variant, char *data) {
 
 template <typename T, typename... Ts>
 bool hproto_try_variant_type(const char *data, size_t size, hproto_id_t id, std::variant<Ts...> &var) {
-    if (id != HProtoId<T>::id)
+    if (id != hproto_id<T>())
         return false;
 
     var.template emplace<T>(std::move(hproto_read<T>(data)));
