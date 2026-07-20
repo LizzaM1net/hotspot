@@ -13,6 +13,7 @@
 #endif
 
 typedef uint64_t h_size_t;
+typedef uint64_t h_offset_t;
 
 template <typename T>
 struct HProtoData {};
@@ -22,6 +23,9 @@ void hproto_write(const T &obj, char *data);
 
 template <typename T>
 T hproto_read(const char* data);
+
+template <typename T>
+constexpr size_t hproto_size();
 
 struct AnyType {
     template <typename T> operator T();
@@ -51,32 +55,27 @@ void hproto_write(const T &obj, char *data) {
 }
 
 template <typename T>
-requires std::is_aggregate_v<T>
+requires std::is_arithmetic_v<T>
+void hproto_write(const T &obj, char *data) {
+    std::memcpy(data, &obj, sizeof(T));
+}
+
+template <typename T>
+requires std::is_aggregate_v<T> || std::is_arithmetic_v<T>
 T hproto_read(const char* data) {
     return *reinterpret_cast<const T*>(data);
 }
 
-#define HOTSPOT_SIZED_OBJECT(name, size)\
-static_assert(sizeof(name) == size, "Bad hotspot type size: "#name);\
-template<>\
-struct HProtoData<name> {\
-    static constexpr size_t hproto_size(const name &) {\
-        return size;\
-    }\
-};
-
-#define HOTSPOT_EMPTY_OBJECT(name)\
-template<>\
-struct HProtoData<name> {\
-    static constexpr size_t hproto_size(const name &) {\
-        return 0;\
-    }\
-};
+template <typename T>
+requires std::is_aggregate_v<T> || std::is_arithmetic_v<T>
+constexpr size_t hproto_size() {
+    return sizeof(T);
+}
 
 template <typename Ts>
-size_t hproto_size(std::variant<Ts> variant) {
+constexpr size_t hproto_size(std::variant<Ts> variant) {
     return std::visit([](const auto& value) {
-        return sizeof(hproto_id_t) + HProtoData<std::remove_cvref_t<decltype(value)>>::hproto_size(value);
+        return sizeof(hproto_id_t) + hproto_size<std::remove_cvref_t<decltype(value)>>();
     }, variant);
 }
 

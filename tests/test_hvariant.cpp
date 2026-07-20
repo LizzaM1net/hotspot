@@ -6,11 +6,8 @@
 #include <variant>
 
 struct StructA {};
-HOTSPOT_EMPTY_OBJECT(StructA)
 struct StructB {};
-HOTSPOT_EMPTY_OBJECT(StructB)
 struct StructC {};
-HOTSPOT_EMPTY_OBJECT(StructC)
 
 TEST_CASE("HVariant unpacks packed variant correctly", "[hvariant]") {
     hLog() << "Testing StructA";

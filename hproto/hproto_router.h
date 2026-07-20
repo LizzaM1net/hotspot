@@ -9,15 +9,12 @@
 struct RouterCreateWaitroomRequest {
     HSocketAddress localAddress;
 };
-HOTSPOT_SIZED_OBJECT(RouterCreateWaitroomRequest, 8)
 
 struct RouterRedirectAnswer {
     HSocketAddress peerAddress;
 };
-HOTSPOT_SIZED_OBJECT(RouterRedirectAnswer, 8)
 
 struct RouterGreet {};
-HOTSPOT_EMPTY_OBJECT(RouterGreet)
 
 struct HotspotFile {
     std::string name;

@@ -47,11 +47,9 @@ T read_blob(const char*& ptr) {
 }
 
 template<>
-struct HProtoData<std::string> {
-    static constexpr size_t hproto_size(const std::string &s) {
-        return sizeof(h_size_t) + s.size();
-    }
-};
+constexpr size_t hproto_size<std::string>() {
+    return sizeof(h_size_t) + sizeof(h_offset_t);
+}
 
 template <>
 void hproto_write<std::string>(const std::string &s, char* data) {
