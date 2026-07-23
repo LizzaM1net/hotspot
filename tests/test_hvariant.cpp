@@ -13,9 +13,11 @@ TEST_CASE("HVariant unpacks packed variant correctly", "[hvariant]") {
     hLog() << "Testing StructA";
     std::variant<StructA> aObj;
     char aReal[hproto_size(aObj)];
-    hproto_write(aObj, aReal);
+    char *ptr = aReal;
+    hproto_write(aObj, &ptr);
 
-    std::variant readObj = hproto_read<StructA, StructB, StructC>(aReal, hproto_size(aObj));
+    const char *constPtr = aReal;
+    std::variant readObj = hproto_read<StructA, StructB, StructC>(&constPtr, hproto_size(aObj));
     CHECK(std::holds_alternative<StructA>(readObj));
 }
 
@@ -23,8 +25,10 @@ TEST_CASE("HVariant falls back to std::monostate for unknown types", "[hvariant]
     hLog() << "Testing wrong variant";
     std::variant<StructC> cObj;
     char cReal[hproto_size(cObj)];
-    hproto_write(cObj, cReal);
+    char *ptr = cReal;
+    hproto_write(cObj, &ptr);
 
-    std::variant readObj = hproto_read<StructA, StructB>(cReal, hproto_size(cObj));
+    const char *constPtr = cReal;
+    std::variant readObj = hproto_read<StructA, StructB>(&constPtr, hproto_size(cObj));
     CHECK(std::holds_alternative<std::monostate>(readObj));
 }

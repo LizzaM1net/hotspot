@@ -44,7 +44,8 @@ void HotspotChat::setUrl(const QUrl &newUrl) {
 
     std::variant<RouterCreateWaitroomRequest> var = RouterCreateWaitroomRequest{ m_server.address() };
     QByteArray arr(hproto_size(var), Qt::Uninitialized);
-    hproto_write(var, arr.data());
+    char *ptr = arr.data();
+    hproto_write(var, &ptr);
 
     if (m_currentConnection)
         m_currentConnection->close();
@@ -68,7 +69,8 @@ void HotspotChat::send(QString text) {
 
     std::variant<std::string> var = text.toStdString();
     QByteArray arr(hproto_size(var), Qt::Uninitialized);
-    hproto_write(var, arr.data());
+    char *ptr = arr.data();
+    hproto_write(var, &ptr);
 
     m_currentConnection->write(arr.data(), arr.size());
 
@@ -95,7 +97,8 @@ void HotspotChat::sendFile(QUrl url) {
     name = name.mid(name.lastIndexOf("/")+1);
     std::variant<HotspotFile> var = HotspotFile{name.toStdString(), contentVector};
     QByteArray arr(hproto_size(var), Qt::Uninitialized);
-    hproto_write(var, arr.data());
+    char *ptr = arr.data();
+    hproto_write(var, &ptr);
 
     m_currentConnection->write(arr.data(), arr.size());
 
@@ -124,7 +127,8 @@ Task HotspotChat::processDatagram(HUdpChannel *channel) {
         if (n < 0)
             continue;
 
-        std::variant var = hproto_read<std::string, RouterRedirectAnswer, HotspotFile, RouterGreet>(buffer, n);
+        const char *ptr = buffer;
+        std::variant var = hproto_read<std::string, RouterRedirectAnswer, HotspotFile, RouterGreet>(&ptr, n);
         if (std::string *string = std::get_if<std::string>(&var)) {
             QString text = QString::fromStdString(*string);
             m_messages.append(QVariantMap({{"from", "remote"}, {"type", "text"}, {"path", ""}, {"text", text}}));
