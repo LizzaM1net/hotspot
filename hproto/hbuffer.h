@@ -52,12 +52,12 @@ constexpr size_t hproto_size<std::string>() {
 }
 
 template <>
-void hproto_write<std::string>(const std::string &s, char **data) {
+void hproto_write_impl<std::string>(const std::string &s, char **data) {
     write_blob(data, s);
 }
 
 template <>
-std::string hproto_read<std::string>(const char **data) {
+std::string hproto_read_impl<std::string>(const char **data) {
     return read_blob<std::string>(data);
 }
 

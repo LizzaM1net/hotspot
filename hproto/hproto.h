@@ -20,10 +20,10 @@ template <typename T>
 struct HProtoData {};
 
 template <typename T>
-void hproto_write(const T &obj, char **data);
+void hproto_write_impl(const T &obj, char **data);
 
 template <typename T>
-T hproto_read(const char **data);
+T hproto_read_impl(const char **data);
 
 template <typename T>
 constexpr size_t hproto_size();
@@ -40,7 +40,7 @@ struct AnyType {
 
 template <typename T>
 requires std::is_aggregate_v<T>
-void hproto_write(const T &obj, char **data) {
+void hproto_write_impl(const T &obj, char **data) {
     using Decayed = std::decay_t<T>;
     std::memset(*data, 0, sizeof(T));
 
@@ -64,17 +64,33 @@ void hproto_write(const T &obj, char **data) {
 
 template <typename T>
 requires std::is_arithmetic_v<T>
-void hproto_write(const T &obj, char **data) {
+void hproto_write_impl(const T &obj, char **data) {
     std::memcpy(*data, &obj, sizeof(T));
     *data += sizeof(T);
 }
 
 template <typename T>
 requires std::is_aggregate_v<T> || std::is_arithmetic_v<T>
-T hproto_read(const char **data) {
+T hproto_read_impl(const char **data) {
     T obj = *reinterpret_cast<const T*>(*data);
     *data += hproto_size<T>();
     return obj;
+}
+
+template<typename T>
+concept HProtoObject = requires(const T& value) {
+    { hproto_write_impl(value, nullptr) } -> std::same_as<void>;
+    { hproto_read_impl<T>(nullptr) } -> std::same_as<T>;
+};
+
+template<HProtoObject T>
+void hproto_write(const T &obj, char *data) {
+    hproto_write_impl(obj, &data);
+}
+
+template<HProtoObject T>
+T hproto_read(char *data) {
+    return hproto_read_impl<T>(&data);
 }
 
 template <typename Ts>
@@ -85,30 +101,30 @@ constexpr size_t hproto_size(std::variant<Ts> variant) {
 }
 
 template <typename Args>
-void hproto_write(std::variant<Args> variant, char **data) {
+void hproto_write_variant(std::variant<Args> variant, char *data) {
     std::visit([data](const auto& value) {
         hproto_id_t id = hproto_id<std::remove_cvref_t<decltype(value)>>();
-        memcpy(*data, &id, sizeof(hproto_id_t));
-        *data += sizeof(hproto_id_t);
-        hproto_write(value, data);
+        memcpy(data, &id, sizeof(hproto_id_t));
+        char *ptr = data + sizeof(hproto_id_t);
+        hproto_write_impl(value, &ptr);
     }, variant);
 }
 
 template <typename T, typename... Ts>
-bool hproto_try_variant_type(const char **data, size_t size, hproto_id_t id, std::variant<Ts...> &var) {
+bool hproto_try_variant_type(const char *data, size_t size, hproto_id_t id, std::variant<Ts...> &var) {
     if (id != hproto_id<T>())
         return false;
 
-    var.template emplace<T>(std::move(hproto_read<T>(data)));
+    var.template emplace<T>(std::move(hproto_read_impl<T>(&data)));
 
     return true;
 }
 
 template <typename... Ts>
-std::variant<std::monostate, Ts...> hproto_read(const char **data, size_t size) {
+std::variant<std::monostate, Ts...> hproto_read_variant(const char *data, size_t size) {
     hproto_id_t id;
-    memcpy(&id, *data, sizeof(hproto_id_t));
-    *data += sizeof(hproto_id_t);
+    memcpy(&id, data, sizeof(hproto_id_t));
+    data += sizeof(hproto_id_t);
     std::variant<std::monostate, Ts...> var;
 
     (hproto_try_variant_type<Ts, std::monostate, Ts...>(data, size-sizeof(hproto_id_t), id, var) || ...);

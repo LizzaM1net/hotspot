@@ -29,8 +29,7 @@ TEST_CASE("hproto_write serializes int correctly", "[hproto]") {
         0x0A, 0x00, 0x00, 0x00,
     };
     char numberReal[hproto_size<int>()];
-    char *ptr = numberReal;
-    hproto_write(number, &ptr);
+    hproto_write(number, numberReal);
     REQUIRE(hproto_size<int>() == 4);
     REQUIRE(memcmp(numberReal, numberExpected, hproto_size<int>()) == 0);
 }
@@ -43,8 +42,7 @@ TEST_CASE("hproto_write serializes double correctly", "[hproto]") {
         0x51, 0xB8, 0xF6, 0x3F,
     };
     char numberReal[hproto_size<double>()];
-    char *ptr = numberReal;
-    hproto_write(number, &ptr);
+    hproto_write(number, numberReal);
     REQUIRE(hproto_size<double>() == 8);
     REQUIRE(memcmp(numberReal, numberExpected, hproto_size<double>()) == 0);
 }
@@ -58,8 +56,7 @@ TEST_CASE("hproto_write serializes SimpleStruct correctly", "[hproto]") {
         0x03, 0x00, 0x00, 0x00,
     };
     char simpleReal[hproto_size<SimpleStruct>()];
-    char *ptr = simpleReal;
-    hproto_write(simpleObj, &ptr);
+    hproto_write(simpleObj, simpleReal);
     REQUIRE(hproto_size<SimpleStruct>() == 12);
     REQUIRE(memcmp(simpleReal, simpleExpected, hproto_size<SimpleStruct>()) == 0);
 }
@@ -76,8 +73,7 @@ TEST_CASE("hproto_write serializes PaddedStruct correctly, zeroing padding", "[h
         0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     };
     char paddedReal[hproto_size<PaddedStruct>()];
-    char *ptr = paddedReal;
-    hproto_write(paddedObj, &ptr);
+    hproto_write(paddedObj, paddedReal);
     REQUIRE(hproto_size<PaddedStruct>() == 24);
     REQUIRE(memcmp(paddedReal, paddedExpected, hproto_size<PaddedStruct>()) == 0);
 }
@@ -89,8 +85,7 @@ TEST_CASE("hproto_write serializes EmptyStruct correctly", "[hproto]") {
         0x00
     };
     char emptyReal[sizeof(EmptyStruct)];
-    char *ptr = emptyReal;
-    hproto_write(emptyObj, &ptr);
+    hproto_write(emptyObj, emptyReal);
     REQUIRE(hproto_size<EmptyStruct>() == 1);
     REQUIRE(memcmp(emptyReal, emptyExpected, sizeof(EmptyStruct)) == 0);
 }
@@ -105,8 +100,7 @@ TEST_CASE("hproto_write serializes NestedStruct correctly", "[hproto]") {
         0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     };
     char nestedReal[sizeof(NestedStruct)];
-    char *ptr = nestedReal;
-    hproto_write(nestedObj, &ptr);
+    hproto_write(nestedObj, nestedReal);
     REQUIRE(hproto_size<NestedStruct>() == 16);
     REQUIRE(memcmp(nestedReal, nestedExpected, sizeof(NestedStruct)) == 0);
 }

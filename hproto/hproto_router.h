@@ -38,13 +38,13 @@ constexpr size_t hproto_size<HotspotFile>() {
 }
 
 template <>
-void hproto_write(const HotspotFile &f, char **data) {
+void hproto_write_impl(const HotspotFile &f, char **data) {
     write_blob(data, f.name);
     write_blob(data, f.data);
 }
 
 template <>
-HotspotFile hproto_read<HotspotFile>(const char **data) {
+HotspotFile hproto_read_impl<HotspotFile>(const char **data) {
     HotspotFile file;
     file.name = read_blob<std::string>(data);
     file.data = read_blob<std::vector<char>>(data);
