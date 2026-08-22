@@ -6,19 +6,16 @@
 #include <variant>
 
 struct StructA {};
-HOTSPOT_EMPTY_OBJECT(StructA)
 struct StructB {};
-HOTSPOT_EMPTY_OBJECT(StructB)
 struct StructC {};
-HOTSPOT_EMPTY_OBJECT(StructC)
 
 TEST_CASE("HVariant unpacks packed variant correctly", "[hvariant]") {
     hLog() << "Testing StructA";
     std::variant<StructA> aObj;
     char aReal[hproto_size(aObj)];
-    hproto_write(aObj, aReal);
+    hproto_write_variant(aObj, aReal);
 
-    std::variant readObj = hproto_read<StructA, StructB, StructC>(aReal, hproto_size(aObj));
+    std::variant readObj = hproto_read_variant<StructA, StructB, StructC>(aReal, hproto_size(aObj));
     CHECK(std::holds_alternative<StructA>(readObj));
 }
 
@@ -26,8 +23,8 @@ TEST_CASE("HVariant falls back to std::monostate for unknown types", "[hvariant]
     hLog() << "Testing wrong variant";
     std::variant<StructC> cObj;
     char cReal[hproto_size(cObj)];
-    hproto_write(cObj, cReal);
+    hproto_write_variant(cObj, cReal);
 
-    std::variant readObj = hproto_read<StructA, StructB>(cReal, hproto_size(cObj));
+    std::variant readObj = hproto_read_variant<StructA, StructB>(cReal, hproto_size(cObj));
     CHECK(std::holds_alternative<std::monostate>(readObj));
 }

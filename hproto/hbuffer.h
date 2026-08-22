@@ -28,38 +28,36 @@ struct HBufferTraits<std::vector<char>> {
 };
 
 template<typename T>
-void write_blob(char*& dst, const T& val) {
+void write_blob(char **data, const T& val) {
     h_size_t n = HBufferTraits<T>::size(val);
-    memcpy(dst, &n, sizeof(n));
-    dst += sizeof(n);
-    memcpy(dst, HBufferTraits<T>::data(val), n);
-    dst += n;
+    memcpy(*data, &n, sizeof(n));
+    *data += sizeof(n);
+    memcpy(*data, HBufferTraits<T>::data(val), n);
+    *data += n;
 }
 
 template<typename T>
-T read_blob(const char*& ptr) {
+T read_blob(const char **ptr) {
     h_size_t n;
-    memcpy(&n, ptr, sizeof(n));
-    ptr += sizeof(n);
-    T result = HBufferTraits<T>::from_blob(ptr, n);
-    ptr += n;
+    memcpy(&n, *ptr, sizeof(n));
+    *ptr += sizeof(n);
+    T result = HBufferTraits<T>::from_blob(*ptr, n);
+    *ptr += n;
     return result;
 }
 
 template<>
-struct HProtoData<std::string> {
-    static constexpr size_t hproto_size(const std::string &s) {
-        return sizeof(h_size_t) + s.size();
-    }
-};
+constexpr size_t hproto_size<std::string>() {
+    return sizeof(h_size_t) + sizeof(h_offset_t);
+}
 
 template <>
-void hproto_write<std::string>(const std::string &s, char* data) {
+void hproto_write_impl<std::string>(const std::string &s, char **data) {
     write_blob(data, s);
 }
 
 template <>
-std::string hproto_read<std::string>(const char* data) {
+std::string hproto_read_impl<std::string>(const char **data) {
     return read_blob<std::string>(data);
 }
 

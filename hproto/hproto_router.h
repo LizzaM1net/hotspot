@@ -9,34 +9,44 @@
 struct RouterCreateWaitroomRequest {
     HSocketAddress localAddress;
 };
-HOTSPOT_SIZED_OBJECT(RouterCreateWaitroomRequest, 8)
 
 struct RouterRedirectAnswer {
     HSocketAddress peerAddress;
 };
-HOTSPOT_SIZED_OBJECT(RouterRedirectAnswer, 8)
 
 struct RouterGreet {};
-HOTSPOT_EMPTY_OBJECT(RouterGreet)
 
 struct HotspotFile {
+    HotspotFile(std::string n, std::vector<char> d)
+        : name(n)
+        , data(d) {}
+
+    HotspotFile() {}
+
     std::string name;
     std::vector<char> data;
 };
 
-template<>
-struct HProtoData<HotspotFile> {
-    static constexpr size_t hproto_size(const HotspotFile &f) {
-        return sizeof(h_size_t) + f.name.size() + sizeof(h_size_t) + f.data.size();
-    }
-    static void hproto_write(const HotspotFile &f, char *data) {
-        write_blob(data, f.name);
-        write_blob(data, f.data);
-    }
-    static HotspotFile hproto_read(const char* data) {
-        HotspotFile file;
-        file.name = read_blob<std::string>(data);
-        file.data = read_blob<std::vector<char>>(data);
-        return file;
-    }
-};
+template <>
+constexpr std::string_view hproto_name<HotspotFile>() {
+    return "HotspotFile";
+}
+
+template <>
+constexpr size_t hproto_size<HotspotFile>() {
+    return sizeof(h_size_t) + sizeof(h_size_t) + 1000;
+}
+
+template <>
+void hproto_write_impl(const HotspotFile &f, char **data) {
+    write_blob(data, f.name);
+    write_blob(data, f.data);
+}
+
+template <>
+HotspotFile hproto_read_impl<HotspotFile>(const char **data) {
+    HotspotFile file;
+    file.name = read_blob<std::string>(data);
+    file.data = read_blob<std::vector<char>>(data);
+    return file;
+}
