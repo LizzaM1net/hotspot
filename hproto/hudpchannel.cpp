@@ -9,7 +9,7 @@
 #include <unistd.h>
 
 HUdpChannel::HUdpChannel(HUdpServer *server, HSocketAddress peer,
-                         std::function<Task(HUdpChannel *)> handler)
+                         const std::function<Task(HUdpChannel *)> &handler)
     : m_peer(peer)
     , m_server(server) {
     m_handle = handler(this).handle;

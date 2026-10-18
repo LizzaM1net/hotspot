@@ -45,7 +45,7 @@ class HUdpChannel {
     friend class HUdpServer;
 public:
     HUdpChannel(HUdpServer *server, HSocketAddress peer,
-                std::function<Task(HUdpChannel *)> handler);
+                const std::function<Task(HUdpChannel *)> &handler);
     ~HUdpChannel();
 
     HUdpChannel(const HUdpChannel&) = delete;
