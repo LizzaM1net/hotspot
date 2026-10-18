@@ -13,3 +13,7 @@ add_test(NAME hvariant COMMAND test_hvariant)
 add_executable(test_reflection test_reflection.cpp)
 target_link_libraries(test_reflection PRIVATE hproto Catch2::Catch2WithMain)
 add_test(NAME reflection COMMAND test_reflection)
+
+add_executable(test_hbuffer test_hbuffer.cpp)
+target_link_libraries(test_hbuffer PRIVATE hproto Catch2::Catch2WithMain)
+add_test(NAME hbuffer COMMAND test_hbuffer)

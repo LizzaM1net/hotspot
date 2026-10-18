@@ -1,6 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include <cassert>
 #include <hproto.h>
 #include <hlog.h>
 #include <variant>
