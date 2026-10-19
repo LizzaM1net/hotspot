@@ -33,20 +33,20 @@ constexpr std::string_view hproto_name<HotspotFile>() {
 }
 
 template <>
-constexpr size_t hproto_size<HotspotFile>() {
-    return sizeof(h_size_t) + sizeof(h_size_t) + 1000;
-}
+struct hproto_traits<HotspotFile> {
+    static constexpr size_t size() {
+        return sizeof(h_size_t) + sizeof(h_size_t) + 1000;
+    }
 
-template <>
-void hproto_write_impl(const HotspotFile &f, char **data) {
-    write_blob(data, f.name);
-    write_blob(data, f.data);
-}
+    static void write_impl(const HotspotFile &f, char **data) {
+        write_blob(data, f.name);
+        write_blob(data, f.data);
+    }
 
-template <>
-HotspotFile hproto_read_impl<HotspotFile>(const char **data) {
-    HotspotFile file;
-    file.name = read_blob<std::string>(data);
-    file.data = read_blob<std::vector<char>>(data);
-    return file;
-}
+    static HotspotFile read_impl(const char **data) {
+        HotspotFile file;
+        file.name = read_blob<std::string>(data);
+        file.data = read_blob<std::vector<char>>(data);
+        return file;
+    }
+};

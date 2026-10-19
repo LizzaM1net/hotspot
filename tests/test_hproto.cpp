@@ -27,10 +27,10 @@ TEST_CASE("hproto_write serializes int correctly", "[hproto]") {
     const unsigned char numberExpected[] = {
         0x0A, 0x00, 0x00, 0x00,
     };
-    char numberReal[hproto_size<int>()];
+    char numberReal[hproto_traits<int>::size()];
     hproto_write(number, numberReal);
-    REQUIRE(hproto_size<int>() == 4);
-    REQUIRE(memcmp(numberReal, numberExpected, hproto_size<int>()) == 0);
+    REQUIRE(hproto_traits<int>::size() == 4);
+    REQUIRE(memcmp(numberReal, numberExpected, hproto_traits<int>::size()) == 0);
 }
 
 TEST_CASE("hproto_read deserializes int correctly", "[hproto]") {
@@ -38,7 +38,7 @@ TEST_CASE("hproto_read deserializes int correctly", "[hproto]") {
     const unsigned char numberData[] = {
         0x0A, 0x00, 0x00, 0x00,
     };
-    REQUIRE(sizeof(numberData) == hproto_size<int>());
+    REQUIRE(sizeof(numberData) == hproto_traits<int>::size());
 
     int number = hproto_read<int>((char *)numberData);
     REQUIRE(number == 10);
@@ -51,10 +51,10 @@ TEST_CASE("hproto_write serializes double correctly", "[hproto]") {
         0xB8, 0x1E, 0x85, 0xEB,
         0x51, 0xB8, 0xF6, 0x3F,
     };
-    char numberReal[hproto_size<double>()];
+    char numberReal[hproto_traits<double>::size()];
     hproto_write(number, numberReal);
-    REQUIRE(hproto_size<double>() == 8);
-    REQUIRE(memcmp(numberReal, numberExpected, hproto_size<double>()) == 0);
+    REQUIRE(hproto_traits<double>::size() == 8);
+    REQUIRE(memcmp(numberReal, numberExpected, hproto_traits<double>::size()) == 0);
 }
 
 TEST_CASE("hproto_write deserializes double correctly", "[hproto]") {
@@ -63,7 +63,7 @@ TEST_CASE("hproto_write deserializes double correctly", "[hproto]") {
         0xB8, 0x1E, 0x85, 0xEB,
         0x51, 0xB8, 0xF6, 0x3F,
     };
-    REQUIRE(sizeof(numberData) == hproto_size<double>());
+    REQUIRE(sizeof(numberData) == hproto_traits<double>::size());
 
     double number = hproto_read<double>((char*)numberData);
     REQUIRE(number == 1.42);
@@ -77,10 +77,10 @@ TEST_CASE("hproto_write serializes SimpleStruct correctly", "[hproto]") {
         0x02, 0x00, 0x00, 0x00,
         0x03, 0x00, 0x00, 0x00,
     };
-    char simpleReal[hproto_size<SimpleStruct>()];
+    char simpleReal[hproto_traits<SimpleStruct>::size()];
     hproto_write(simpleObj, simpleReal);
-    REQUIRE(hproto_size<SimpleStruct>() == 12);
-    REQUIRE(memcmp(simpleReal, simpleExpected, hproto_size<SimpleStruct>()) == 0);
+    REQUIRE(hproto_traits<SimpleStruct>::size() == 12);
+    REQUIRE(memcmp(simpleReal, simpleExpected, hproto_traits<SimpleStruct>::size()) == 0);
 }
 
 TEST_CASE("hproto_write deserializes SimpleStruct correctly", "[hproto]") {
@@ -90,7 +90,7 @@ TEST_CASE("hproto_write deserializes SimpleStruct correctly", "[hproto]") {
         0x02, 0x00, 0x00, 0x00,
         0x03, 0x00, 0x00, 0x00,
     };
-    REQUIRE(sizeof(simpleData) == hproto_size<SimpleStruct>());
+    REQUIRE(sizeof(simpleData) == hproto_traits<SimpleStruct>::size());
 
     SimpleStruct simple = hproto_read<SimpleStruct>((char*)simpleData);
     REQUIRE(simple.a == 1);
@@ -109,10 +109,10 @@ TEST_CASE("hproto_write serializes PaddedStruct correctly, zeroing padding", "[h
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40,
         0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     };
-    char paddedReal[hproto_size<PaddedStruct>()];
+    char paddedReal[hproto_traits<PaddedStruct>::size()];
     hproto_write(paddedObj, paddedReal);
-    REQUIRE(hproto_size<PaddedStruct>() == 24);
-    REQUIRE(memcmp(paddedReal, paddedExpected, hproto_size<PaddedStruct>()) == 0);
+    REQUIRE(hproto_traits<PaddedStruct>::size() == 24);
+    REQUIRE(memcmp(paddedReal, paddedExpected, hproto_traits<PaddedStruct>::size()) == 0);
 }
 
 TEST_CASE("hproto_write deserializes PaddedStruct correctly, zeroing padding", "[hproto]") {
@@ -123,7 +123,7 @@ TEST_CASE("hproto_write deserializes PaddedStruct correctly, zeroing padding", "
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40,
         0x03, 0x00, 0x00, 0x00, 0xFE, 0xFE, 0xFE, 0xFE,
     };
-    REQUIRE(sizeof(paddedData) == hproto_size<PaddedStruct>());
+    REQUIRE(sizeof(paddedData) == hproto_traits<PaddedStruct>::size());
 
     PaddedStruct padded = hproto_read<PaddedStruct>((char*)paddedData);
     REQUIRE(padded.a == 1);
@@ -139,7 +139,7 @@ TEST_CASE("hproto_write serializes EmptyStruct correctly", "[hproto]") {
     };
     char emptyReal[sizeof(EmptyStruct)];
     hproto_write(emptyObj, emptyReal);
-    REQUIRE(hproto_size<EmptyStruct>() == 1);
+    REQUIRE(hproto_traits<EmptyStruct>::size() == 1);
     REQUIRE(memcmp(emptyReal, emptyExpected, sizeof(EmptyStruct)) == 0);
 }
 
@@ -148,7 +148,7 @@ TEST_CASE("hproto_write deserializes EmptyStruct correctly", "[hproto]") {
     const unsigned char emptyData[] = {
         0x00
     };
-    REQUIRE(sizeof(emptyData) == hproto_size<EmptyStruct>());
+    REQUIRE(sizeof(emptyData) == hproto_traits<EmptyStruct>::size());
 
     EmptyStruct empty = hproto_read<EmptyStruct>((char*)emptyData);
 }
@@ -164,7 +164,7 @@ TEST_CASE("hproto_write serializes NestedStruct correctly", "[hproto]") {
     };
     char nestedReal[sizeof(NestedStruct)];
     hproto_write(nestedObj, nestedReal);
-    REQUIRE(hproto_size<NestedStruct>() == 16);
+    REQUIRE(hproto_traits<NestedStruct>::size() == 16);
     REQUIRE(memcmp(nestedReal, nestedExpected, sizeof(NestedStruct)) == 0);
 }
 
@@ -174,7 +174,7 @@ TEST_CASE("hproto_write deserializes NestedStruct correctly", "[hproto]") {
         0x03, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,
         0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     };
-    REQUIRE(sizeof(nestedData) == hproto_size<NestedStruct>());
+    REQUIRE(sizeof(nestedData) == hproto_traits<NestedStruct>::size());
 
     NestedStruct nestedObj{
         {3, 2, 1}

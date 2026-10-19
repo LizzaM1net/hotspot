@@ -46,20 +46,20 @@ T read_blob(const char **ptr) {
     return result;
 }
 
-template<>
-constexpr size_t hproto_size<std::string>() {
-    return sizeof(h_size_t) + sizeof(h_offset_t);
-}
-
 template <>
-void hproto_write_impl<std::string>(const std::string &s, char **data) {
-    write_blob(data, s);
-}
+struct hproto_traits<std::string> {
+    static constexpr size_t size() {
+        return sizeof(h_size_t) + sizeof(h_offset_t);
+    }
 
-template <>
-std::string hproto_read_impl<std::string>(const char **data) {
-    return read_blob<std::string>(data);
-}
+    static void write_impl(const std::string &s, char **data) {
+        write_blob(data, s);
+    }
+
+    static std::string read_impl(const char **data) {
+        return read_blob<std::string>(data);
+    }
+};
 
 template <>
 constexpr std::string_view hproto_name<std::string>() {

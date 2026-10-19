@@ -17,86 +17,88 @@ typedef uint64_t h_size_t;
 typedef uint64_t h_offset_t;
 
 template <typename T>
-struct HProtoData {};
+struct hproto_traits {};
 
 template <typename T>
-void hproto_write_impl(const T &obj, char **data);
+    requires std::is_arithmetic_v<T>
+struct hproto_traits<T> {
+    static constexpr size_t size() {
+        return sizeof(T);
+    }
 
-template <typename T>
-T hproto_read_impl(const char **data);
+    static void write_impl(const T &obj, char **data) {
+        std::memcpy(*data, &obj, sizeof(T));
+        *data += sizeof(T);
+    }
 
-template <typename T>
-constexpr size_t hproto_size();
-
-template <typename T>
-requires std::is_aggregate_v<T> || std::is_arithmetic_v<T>
-constexpr size_t hproto_size() {
-    return sizeof(T);
-}
+    static T read_impl(const char **data) {
+        T obj = *reinterpret_cast<const T*>(*data);
+        *data += hproto_traits<T>::size();
+        return obj;
+    }
+};
 
 struct AnyType {
     template <typename T> operator T();
 };
 
 template <typename T>
-requires std::is_aggregate_v<T>
-void hproto_write_impl(const T &obj, char **data) {
-    using Decayed = std::decay_t<T>;
-    std::memset(*data, 0, sizeof(T));
-
-    if constexpr (requires { Decayed{AnyType{}, AnyType{}, AnyType{}, AnyType{}, AnyType{}}; }) {
-        static_assert(false, "hproto_write: Type contains too many fields");
-    } else if constexpr (requires { Decayed{AnyType{}, AnyType{}, AnyType{}, AnyType{}}; }) {
-        auto&& [a, b, c, d] = obj;
-        std::construct_at((T*)(*data), a, b, c, d);
-    } else if constexpr (requires { Decayed{AnyType{}, AnyType{}, AnyType{}}; }) {
-        auto&& [a, b, c] = obj;
-        std::construct_at((T*)(*data), a, b, c);
-    } else if constexpr (requires { Decayed{AnyType{}, AnyType{}}; }) {
-        auto&& [a, b] = obj;
-        std::construct_at((T*)(*data), a, b);
-    } else if constexpr (requires { Decayed{AnyType{}}; }) {
-        auto&& [a] = obj;
-        std::construct_at((T*)(*data), a);
+    requires std::is_aggregate_v<T>
+struct hproto_traits<T> {
+    static constexpr size_t size() {
+        return sizeof(T);
     }
-    *data += sizeof(T);
-}
 
-template <typename T>
-requires std::is_arithmetic_v<T>
-void hproto_write_impl(const T &obj, char **data) {
-    std::memcpy(*data, &obj, sizeof(T));
-    *data += sizeof(T);
-}
+    static void write_impl(const T &obj, char **data) {
+        using Decayed = std::decay_t<T>;
+        std::memset(*data, 0, sizeof(T));
 
-template <typename T>
-requires std::is_aggregate_v<T> || std::is_arithmetic_v<T>
-T hproto_read_impl(const char **data) {
-    T obj = *reinterpret_cast<const T*>(*data);
-    *data += hproto_size<T>();
-    return obj;
-}
+        if constexpr (requires { Decayed{AnyType{}, AnyType{}, AnyType{}, AnyType{}, AnyType{}}; }) {
+            static_assert(false, "hproto_write: Type contains too many fields");
+        } else if constexpr (requires { Decayed{AnyType{}, AnyType{}, AnyType{}, AnyType{}}; }) {
+            auto&& [a, b, c, d] = obj;
+            std::construct_at((T*)(*data), a, b, c, d);
+        } else if constexpr (requires { Decayed{AnyType{}, AnyType{}, AnyType{}}; }) {
+            auto&& [a, b, c] = obj;
+            std::construct_at((T*)(*data), a, b, c);
+        } else if constexpr (requires { Decayed{AnyType{}, AnyType{}}; }) {
+            auto&& [a, b] = obj;
+            std::construct_at((T*)(*data), a, b);
+        } else if constexpr (requires { Decayed{AnyType{}}; }) {
+            auto&& [a] = obj;
+            std::construct_at((T*)(*data), a);
+        }
+        *data += sizeof(T);
+    }
 
-template<typename T>
-concept HProtoObject = requires(const T& value) {
-    { hproto_write_impl(value, nullptr) } -> std::same_as<void>;
-    { hproto_read_impl<T>(nullptr) } -> std::same_as<T>;
+    static T read_impl(const char **data) {
+        T obj = *reinterpret_cast<const T*>(*data);
+        *data += size();
+        return obj;
+    }
 };
 
-template<HProtoObject T>
+template<typename T>
+concept hproto_serializable = requires(const T& value) {
+    { hproto_traits<T>::size() } -> std::same_as<size_t>;
+    { hproto_traits<T>::write_impl(value, nullptr) } -> std::same_as<void>;
+    { hproto_traits<T>::read_impl(nullptr) } -> std::same_as<T>;
+};
+
+template<hproto_serializable T>
 void hproto_write(const T &obj, char *data) {
-    hproto_write_impl(obj, &data);
+    hproto_traits<T>::write_impl(obj, &data);
 }
 
-template<HProtoObject T>
+template<hproto_serializable T>
 T hproto_read(const char *data) {
-    return hproto_read_impl<T>(&data);
+    return hproto_traits<T>::read_impl(&data);
 }
 
 template <typename Ts>
 constexpr size_t hproto_size(std::variant<Ts> variant) {
     return std::visit([](const auto& value) {
-        return sizeof(hproto_id_t) + hproto_size<std::remove_cvref_t<decltype(value)>>();
+        return sizeof(hproto_id_t) + hproto_traits<std::remove_cvref_t<decltype(value)>>::size();
     }, variant);
 }
 
@@ -106,7 +108,7 @@ void hproto_write_variant(std::variant<Args> variant, char *data) {
         hproto_id_t id = hproto_id<std::remove_cvref_t<decltype(value)>>();
         memcpy(data, &id, sizeof(hproto_id_t));
         char *ptr = data + sizeof(hproto_id_t);
-        hproto_write_impl(value, &ptr);
+        hproto_traits<std::remove_cvref_t<decltype(value)>>::write_impl(value, &ptr);
     }, variant);
 }
 
@@ -115,7 +117,7 @@ bool hproto_try_variant_type(const char *data, size_t size, hproto_id_t id, std:
     if (id != hproto_id<T>())
         return false;
 
-    var.template emplace<T>(std::move(hproto_read_impl<T>(&data)));
+    var.template emplace<T>(std::move(hproto_traits<T>::read_impl(&data)));
 
     return true;
 }
