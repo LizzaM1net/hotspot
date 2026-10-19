@@ -89,7 +89,7 @@ void hproto_write(const T &obj, char *data) {
 }
 
 template<HProtoObject T>
-T hproto_read(char *data) {
+T hproto_read(const char *data) {
     return hproto_read_impl<T>(&data);
 }
 
