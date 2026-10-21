@@ -33,7 +33,7 @@ struct hproto_traits<T> {
 
     static T read_impl(const char **data) {
         T obj = *reinterpret_cast<const T*>(*data);
-        *data += hproto_traits<T>::size();
+        *data += size();
         return obj;
     }
 };
@@ -93,6 +93,11 @@ void hproto_write(const T &obj, char *data) {
 template<hproto_serializable T>
 T hproto_read(const char *data) {
     return hproto_traits<T>::read_impl(&data);
+}
+
+template<hproto_serializable T>
+size_t hproto_size(const T &obj) {
+    return hproto_traits<T>::size();
 }
 
 template <typename Ts>
