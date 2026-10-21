@@ -78,6 +78,41 @@ struct hproto_traits<T> {
     }
 };
 
+template <typename T, typename... Ts>
+bool hproto_try_variant_type(const char **data, hproto_id_t id, std::variant<Ts...> &var) {
+    if (id != hproto_id<T>())
+        return false;
+
+    var.template emplace<T>(std::move(hproto_traits<T>::read_impl(data)));
+
+    return true;
+}
+
+template<typename... Ts>
+struct hproto_traits<std::variant<Ts...>> {
+    static constexpr size_t size() {
+        return sizeof(hproto_id_t) +
+               std::max({ hproto_traits<std::remove_cvref_t<Ts>>::size()... });
+    }
+
+    static void write_impl(const std::variant<Ts...> &var, char **data) {
+        std::visit([data](const auto& value) {
+            hproto_id_t id = hproto_id<std::remove_cvref_t<decltype(value)>>();
+            hproto_traits<hproto_id_t>::write_impl(id, data);
+            hproto_traits<std::remove_cvref_t<decltype(value)>>::write_impl(value, data);
+        }, var);
+    }
+
+    static std::variant<Ts...> read_impl(const char **data) {
+        hproto_id_t id = hproto_traits<hproto_id_t>::read_impl(data);
+        std::variant<Ts...> var;
+
+        (hproto_try_variant_type<Ts, Ts...>(data, id, var) || ...);
+
+        return var;
+    }
+};
+
 template<typename T>
 concept hproto_serializable = requires(const T& value) {
     { hproto_traits<T>::size() } -> std::same_as<size_t>;
@@ -98,43 +133,4 @@ T hproto_read(const char *data) {
 template<hproto_serializable T>
 size_t hproto_size(const T &obj) {
     return hproto_traits<T>::size();
-}
-
-template <typename Ts>
-constexpr size_t hproto_size(std::variant<Ts> variant) {
-    return std::visit([](const auto& value) {
-        return sizeof(hproto_id_t) + hproto_traits<std::remove_cvref_t<decltype(value)>>::size();
-    }, variant);
-}
-
-template <typename Args>
-void hproto_write_variant(std::variant<Args> variant, char *data) {
-    std::visit([data](const auto& value) {
-        hproto_id_t id = hproto_id<std::remove_cvref_t<decltype(value)>>();
-        memcpy(data, &id, sizeof(hproto_id_t));
-        char *ptr = data + sizeof(hproto_id_t);
-        hproto_traits<std::remove_cvref_t<decltype(value)>>::write_impl(value, &ptr);
-    }, variant);
-}
-
-template <typename T, typename... Ts>
-bool hproto_try_variant_type(const char *data, size_t size, hproto_id_t id, std::variant<Ts...> &var) {
-    if (id != hproto_id<T>())
-        return false;
-
-    var.template emplace<T>(std::move(hproto_traits<T>::read_impl(&data)));
-
-    return true;
-}
-
-template <typename... Ts>
-std::variant<std::monostate, Ts...> hproto_read_variant(const char *data, size_t size) {
-    hproto_id_t id;
-    memcpy(&id, data, sizeof(hproto_id_t));
-    data += sizeof(hproto_id_t);
-    std::variant<std::monostate, Ts...> var;
-
-    (hproto_try_variant_type<Ts, std::monostate, Ts...>(data, size-sizeof(hproto_id_t), id, var) || ...);
-
-    return var;
 }

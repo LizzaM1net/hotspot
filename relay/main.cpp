@@ -9,10 +9,10 @@
 
 static void send_redirect(HUdpChannel *chan, HSocketAddress peer) {
     RouterRedirectAnswer answer { peer };
-    std::variant<RouterRedirectAnswer> v = answer;
+    std::variant<std::monostate, RouterRedirectAnswer> v = answer;
 
     char buf[sizeof(hproto_id_t) + sizeof(RouterRedirectAnswer)];
-    hproto_write_variant(v, buf);
+    hproto_write(v, buf);
     chan->write(buf, sizeof(buf));
 }
 
@@ -38,7 +38,7 @@ int main() {
             if (n < 0)
                 continue;
 
-            std::variant var = hproto_read_variant<RouterCreateWaitroomRequest>(buffer, n);
+            std::variant<std::monostate, RouterCreateWaitroomRequest> var = hproto_read<decltype(var)>(buffer);
             if (RouterCreateWaitroomRequest* req = std::get_if<RouterCreateWaitroomRequest>(&var)) {
                 HUdpChannel *other = nullptr;
                 for (auto& [sender, candidate] : sessions) {
