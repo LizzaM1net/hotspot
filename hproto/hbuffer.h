@@ -6,45 +6,26 @@
 #include <string>
 #include <vector>
 
-template <typename T>
-struct HBufferTraits {
-    static const char *data(const T&);
-    static size_t size(const T&);
-    static T from_blob(const char *data, size_t size);
-};
-
 template <>
-struct HBufferTraits<std::string> {
-    static const char* data(const std::string& s) { return s.data(); }
-    static size_t size(const std::string& s) { return s.size(); }
-    static std::string from_blob(const char* ptr, size_t len) { return {ptr, len}; }
+struct hproto_traits<std::vector<char>> {
+    static constexpr size_t size() {
+        return sizeof(h_size_t) + 1000;
+    }
+
+    static void write_impl(const std::vector<char> &c, char **data) {
+        h_size_t n = c.size();
+        hproto_traits<h_size_t>::write_impl(n, data);
+        memcpy(*data, c.data(), n);
+        *data += n;
+    }
+
+    static std::vector<char> read_impl(const char **data) {
+        h_size_t n = hproto_traits<h_size_t>::read_impl(data);
+        std::vector<char> result(*data, *data+n);
+        *data += n;
+        return result;
+    }
 };
-
-template <>
-struct HBufferTraits<std::vector<char>> {
-    static const char* data(const std::vector<char>& s) { return s.data(); }
-    static size_t size(const std::vector<char>& s) { return s.size(); }
-    static std::vector<char> from_blob(const char* ptr, size_t len) { return {ptr, ptr+len}; }
-};
-
-template<typename T>
-void write_blob(char **data, const T& val) {
-    h_size_t n = HBufferTraits<T>::size(val);
-    memcpy(*data, &n, sizeof(n));
-    *data += sizeof(n);
-    memcpy(*data, HBufferTraits<T>::data(val), n);
-    *data += n;
-}
-
-template<typename T>
-T read_blob(const char **ptr) {
-    h_size_t n;
-    memcpy(&n, *ptr, sizeof(n));
-    *ptr += sizeof(n);
-    T result = HBufferTraits<T>::from_blob(*ptr, n);
-    *ptr += n;
-    return result;
-}
 
 template <>
 struct hproto_traits<std::string> {
@@ -53,11 +34,17 @@ struct hproto_traits<std::string> {
     }
 
     static void write_impl(const std::string &s, char **data) {
-        write_blob(data, s);
+        h_size_t n = s.size();
+        hproto_traits<h_size_t>::write_impl(n, data);
+        memcpy(*data, s.data(), n);
+        *data += n;
     }
 
     static std::string read_impl(const char **data) {
-        return read_blob<std::string>(data);
+        h_size_t n = hproto_traits<h_size_t>::read_impl(data);
+        std::string result(*data, n);
+        *data += n;
+        return result;
     }
 };
 

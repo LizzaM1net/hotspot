@@ -17,12 +17,6 @@ struct RouterRedirectAnswer {
 struct RouterGreet {};
 
 struct HotspotFile {
-    HotspotFile(std::string n, std::vector<char> d)
-        : name(n)
-        , data(d) {}
-
-    HotspotFile() {}
-
     std::string name;
     std::vector<char> data;
 };
@@ -35,18 +29,19 @@ constexpr std::string_view hproto_name<HotspotFile>() {
 template <>
 struct hproto_traits<HotspotFile> {
     static constexpr size_t size() {
-        return sizeof(h_size_t) + sizeof(h_size_t) + 1000;
+        return hproto_traits<std::string>::size()
+            + hproto_traits<std::vector<char>>::size();
     }
 
     static void write_impl(const HotspotFile &f, char **data) {
-        write_blob(data, f.name);
-        write_blob(data, f.data);
+        hproto_traits<std::string>::write_impl(f.name, data);
+        hproto_traits<std::vector<char>>::write_impl(f.data, data);
     }
 
     static HotspotFile read_impl(const char **data) {
         HotspotFile file;
-        file.name = read_blob<std::string>(data);
-        file.data = read_blob<std::vector<char>>(data);
+        file.name = hproto_traits<std::string>::read_impl(data);
+        file.data = hproto_traits<std::vector<char>>::read_impl(data);
         return file;
     }
 };
