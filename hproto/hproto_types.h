@@ -41,3 +41,23 @@ private:
     uint32_t m_ip;
     uint16_t m_port;
 };
+
+template <>
+struct hproto_traits<HSocketAddress> {
+    static constexpr size_t size() {
+        return hproto_traits<uint32_t>::size()
+            + hproto_traits<uint16_t>::size();
+    }
+
+    static void write_impl(const HSocketAddress &obj, char **data) {
+        hproto_traits<uint32_t>::write_impl(obj.ip(), data);
+        hproto_traits<uint16_t>::write_impl(obj.port(), data);
+    }
+
+    static HSocketAddress read_impl(const char **data) {
+        return {
+            hproto_traits<uint32_t>::read_impl(data),
+            hproto_traits<uint16_t>::read_impl(data)
+        };
+    }
+};

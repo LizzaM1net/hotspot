@@ -100,14 +100,11 @@ TEST_CASE("hproto_write deserializes SimpleStruct correctly", "[hproto]") {
 
 TEST_CASE("hproto_write serializes PaddedStruct correctly, zeroing padding", "[hproto]") {
     hLog() << "Testing PaddedStruct serialize";
-    PaddedStruct paddedObj;
-    // Immitates uninitialized data before constructor run
-    std::memset(&paddedObj, 0xfe, sizeof(PaddedStruct));
-    std::construct_at(&paddedObj, 1, 2.0, 3);
+    PaddedStruct paddedObj{1, 2.0, 3};
     const unsigned char paddedExpected[] = {
-        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x01, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40,
-        0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x03, 0x00, 0x00, 0x00,
     };
     char paddedReal[hproto_size(paddedObj)];
     hproto_write(paddedObj, paddedReal);
@@ -117,11 +114,10 @@ TEST_CASE("hproto_write serializes PaddedStruct correctly, zeroing padding", "[h
 
 TEST_CASE("hproto_write deserializes PaddedStruct correctly, zeroing padding", "[hproto]") {
     hLog() << "Testing PaddedStruct deserialize";
-    // Compare data with garbage in the padding against clean values
     const unsigned char paddedData[] = {
-        0x01, 0x00, 0x00, 0x00, 0xFE, 0xFE, 0xFE, 0xFE,
+        0x01, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40,
-        0x03, 0x00, 0x00, 0x00, 0xFE, 0xFE, 0xFE, 0xFE,
+        0x03, 0x00, 0x00, 0x00,
     };
 
     PaddedStruct padded = hproto_read<PaddedStruct>((char*)paddedData);
@@ -134,9 +130,7 @@ TEST_CASE("hproto_write deserializes PaddedStruct correctly, zeroing padding", "
 TEST_CASE("hproto_write serializes EmptyStruct correctly", "[hproto]") {
     hLog() << "Testing EmptyStruct serialize";
     EmptyStruct emptyObj;
-    const unsigned char emptyExpected[] = {
-        0x00
-    };
+    const unsigned char emptyExpected[] = {};
     char emptyReal[hproto_size(emptyObj)];
     hproto_write(emptyObj, emptyReal);
     REQUIRE(sizeof(emptyReal) == sizeof(emptyExpected));
@@ -145,9 +139,7 @@ TEST_CASE("hproto_write serializes EmptyStruct correctly", "[hproto]") {
 
 TEST_CASE("hproto_write deserializes EmptyStruct correctly", "[hproto]") {
     hLog() << "Testing EmptyStruct deserialize";
-    const unsigned char emptyData[] = {
-        0x00
-    };
+    const unsigned char emptyData[] = {};
 
     EmptyStruct empty = hproto_read<EmptyStruct>((char*)emptyData);
     REQUIRE(hproto_size(empty) == sizeof(emptyData));
@@ -160,7 +152,7 @@ TEST_CASE("hproto_write serializes NestedStruct correctly", "[hproto]") {
     };
     const unsigned char nestedExpected[] = {
         0x03, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,
-        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x01, 0x00, 0x00, 0x00,
     };
     char nestedReal[hproto_size(nestedObj)];
     hproto_write(nestedObj, nestedReal);
@@ -172,7 +164,7 @@ TEST_CASE("hproto_write deserializes NestedStruct correctly", "[hproto]") {
     hLog() << "Testing NestedStruct deserialize";
     const unsigned char nestedData[] = {
         0x03, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00,
-        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x01, 0x00, 0x00, 0x00,
     };
 
     NestedStruct nested = hproto_read<NestedStruct>((char*)nestedData);
